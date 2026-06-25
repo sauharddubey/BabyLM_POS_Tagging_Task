@@ -1,0 +1,11 @@
+torch
+transformers==4.38.2
+datasets==2.18.0
+evaluate==0.4.1
+scikit-learn
+nltk
+accelerate==0.27.2
+seqeval
+sacrebleu
+tqdm
+numpy

@@ -1,0 +1,34 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Data and cached datasets (large files)
+data/
+
+# Model Checkpoints (local pytorch checkpoints)
+checkpoints/
+
+# Hugging Face export models
+hf_models/
+
+# SLURM output logs
+logs/
+
+# NLTK data (if downloaded elsewhere)
+nltk_data/
+
+# PyTorch/HuggingFace Cache
+.cache/
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Official BabyLM evaluation pipeline (separately cloned subproject)
+babylm-eval/
