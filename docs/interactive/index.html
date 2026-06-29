@@ -573,9 +573,8 @@
         }
 
         .grad-particle {
-            fill: var(--secondary);
-            r: 4;
             opacity: 0;
+            pointer-events: none;
         }
 
         /* Playable Logits Simulator */
@@ -729,6 +728,58 @@
             padding: 0.15rem 0.4rem;
             border-radius: 4px;
             font-family: var(--font-monospace);
+        }
+
+        /* Expandable example dropdown card */
+        .example-box {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            margin-top: 1.5rem;
+            overflow: hidden;
+            width: 100%;
+        }
+
+        .example-header {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 1.05rem;
+        }
+
+        .example-body {
+            padding: 1.5rem;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            color: var(--text-muted);
+            display: none;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .example-body.show {
+            display: block;
+        }
+
+        .example-math-step {
+            margin-bottom: 1.25rem;
+            padding-left: 1rem;
+            border-left: 3px solid var(--primary);
+        }
+
+        .example-math-step:last-child {
+            margin-bottom: 0;
+        }
+
+        .example-math-title {
+            font-weight: 700;
+            color: var(--text-main);
+            font-family: 'Outfit', sans-serif;
+            margin-bottom: 0.25rem;
         }
     </style>
 </head>
@@ -1098,17 +1149,47 @@
                             <line x1="320" y1="55" x2="558" y2="55" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
                             <line x1="320" y1="160" x2="558" y2="160" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
 
-                            <!-- Animated Particles -->
-                            <circle class="grad-particle" id="p-mlm-0" cx="558" cy="55" />
-                            <circle class="grad-particle" id="p-mlm-1" cx="220" cy="55" />
+                            <!-- Animated Particles (Explicit coordinates, radius and colors) -->
+                            <circle class="grad-particle" id="p-mlm-0" cx="558" cy="55" r="5" fill="var(--secondary)" />
+                            <circle class="grad-particle" id="p-mlm-1" cx="220" cy="55" r="5" fill="var(--secondary)" />
 
-                            <circle class="grad-particle" id="p-nsp-0" cx="558" cy="160" />
-                            <circle class="grad-particle" id="p-nsp-1" cx="220" cy="160" />
+                            <circle class="grad-particle" id="p-nsp-0" cx="558" cy="160" r="5" fill="var(--secondary)" />
+                            <circle class="grad-particle" id="p-nsp-1" cx="220" cy="160" r="5" fill="var(--secondary)" />
 
-                            <circle class="grad-particle" id="p-pos-0" cx="558" cy="265" />
-                            <circle class="grad-particle" id="p-pos-1" cx="380" cy="265" />
-                            <circle class="grad-particle" id="p-pos-2" cx="220" cy="265" />
+                            <circle class="grad-particle" id="p-pos-0" cx="558" cy="265" r="5" fill="var(--secondary)" />
+                            <circle class="grad-particle" id="p-pos-1" cx="380" cy="265" r="5" fill="var(--secondary)" />
+                            <circle class="grad-particle" id="p-pos-2" cx="220" cy="265" r="5" fill="var(--secondary)" />
                         </svg>
+                    </div>
+
+                    <!-- Example dropdown card -->
+                    <div class="example-box">
+                        <div class="example-header" onclick="toggleExampleBox('ex-multitask')">
+                            <span>🔍 Click to expand Example-Driven Gradient Walkthrough</span>
+                            <span id="ex-multitask-icon">▼</span>
+                        </div>
+                        <div class="example-body" id="ex-multitask">
+                            <div class="example-math-step">
+                                <div class="example-math-title">Step 1: Input Sequence Processing</div>
+                                <div>Consider the input word <code>"cats"</code>. Under WordPiece tokenization, it splits into subwords <code>["cat", "##s"]</code> at sequence index 1 and 2.</div>
+                            </div>
+                            <div class="example-math-step">
+                                <div class="example-math-title">Step 2: Forward Loss Aggregation</div>
+                                <div>The model calculates MLM loss at the subword index ($L_{MLM} = 1.85$) and POS tag loss at the word level ($L_{POS} = 0.90$ for the tag <code>NNS</code>).</div>
+                            </div>
+                            <div class="example-math-step">
+                                <div class="example-math-title">Step 3: Head Backpropagation</div>
+                                <div>The POS loss gradient backpropagates to the POS Classifier, yielding a word-level hidden state error $\frac{\partial \mathcal{L}_{POS}}{\partial H_{word}} = \mathbf{g}_{word}$.</div>
+                            </div>
+                            <div class="example-math-step">
+                                <div class="example-math-title">Step 4: Gradient Pooling Distribution</div>
+                                <div>Since the word <code>"cats"</code> maps to 2 subwords, the pooling matrix coefficients are $P = [0.5, 0.5]$ at those indices. Backpropagating through the pooling matrix uses the transpose equation:
+                                <br/>
+                                <span class="math-inline">\frac{\partial \mathcal{L}_{POS}}{\partial H_{cat}} = 0.5 \times \mathbf{g}_{word}</span> and <span class="math-inline">\frac{\partial \mathcal{L}_{POS}}{\partial H_{##s}} = 0.5 \times \mathbf{g}_{word}</span>.
+                                <br/>
+                                This scales and distributes the syntax gradient equally back into the individual subwords!</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </article>
@@ -1278,18 +1359,59 @@
                             <path d="M 430 73 L 430 200 L 275 200 L 275 240" fill="none" stroke="rgba(236, 72, 153, 0.4)" stroke-width="2" stroke-dasharray="4" class="gradient-glow" />
                             <text x="350" y="193" fill="var(--secondary)" font-size="9" text-anchor="middle">MLM Gradient Route (Soft)</text>
 
-                            <!-- Animated Particles -->
-                            <circle class="grad-particle" id="pl-mlm-0" cx="558" cy="55" />
-                            <circle class="grad-particle" id="pl-mlm-1" cx="412" cy="55" />
-                            <circle class="grad-particle" id="pl-mlm-2" cx="220" cy="55" />
+                            <!-- Animated Particles (Explicit coordinates, radius and colors) -->
+                            <circle class="grad-particle" id="pl-mlm-0" cx="558" cy="55" r="5" fill="var(--secondary)" />
+                            <circle class="grad-particle" id="pl-mlm-1" cx="412" cy="55" r="5" fill="var(--secondary)" />
+                            <circle class="grad-particle" id="pl-mlm-2" cx="220" cy="55" r="5" fill="var(--secondary)" />
                             
                             <!-- MLM flowing to POS head during soft backprop -->
                             <path id="pl-path-soft" d="M 430 73 L 430 200 L 275 200 L 275 240" fill="none" stroke="transparent" />
-                            <circle class="grad-particle" id="pl-mlm-soft-node" cx="430" cy="73" />
+                            <circle class="grad-particle" id="pl-mlm-soft-node" cx="430" cy="73" r="5" fill="var(--secondary)" />
 
-                            <circle class="grad-particle" id="pl-pos-0" cx="558" cy="265" />
-                            <circle class="grad-particle" id="pl-pos-1" cx="220" cy="265" />
+                            <circle class="grad-particle" id="pl-pos-0" cx="558" cy="265" r="5" fill="var(--secondary)" />
+                            <circle class="grad-particle" id="pl-pos-1" cx="220" cy="265" r="5" fill="var(--secondary)" />
                         </svg>
+                    </div>
+
+                    <!-- Example dropdown card -->
+                    <div class="example-box">
+                        <div class="example-header" onclick="toggleExampleBox('ex-layered')">
+                            <span>🔍 Click to expand Example-Driven Soft Masking Gradient Walkthrough</span>
+                            <span id="ex-layered-icon">▼</span>
+                        </div>
+                        <div class="example-body" id="ex-layered">
+                            <div class="example-math-step">
+                                <div class="example-math-title">Step 1: Soft Masking Configuration</div>
+                                <div>Consider predicting the masked slot in <code>"the [MASK] sat"</code>. The true word is <code>"cat"</code>.
+                                The POS tagger predicts tagging probabilities: $P(\text{Noun}) = 0.85$, $P(\text{Verb}) = 0.10$, $P(\text{Adjective}) = 0.05$.</div>
+                            </div>
+                            <div class="example-math-step">
+                                <div class="example-math-title">Step 2: Forward Masked Logits Calculation</div>
+                                <div>The MLM logits combinations overlay predicts candidate probabilities by multiplying the POS probabilities by the allowed POS-to-Vocabulary matrix:
+                                <br/>
+                                <span class="math-inline">\mathbf{m}_{vocab} = P(\text{Noun}) \times \mathbf{M}_{Noun} + P(\text{Verb}) \times \mathbf{M}_{Verb} + \dots</span>
+                                <br/>
+                                This reduces logits for words of incorrect tags (like verbs/adjectives) by overlaying $\log(\mathbf{m}_{vocab} + \epsilon)$.</div>
+                            </div>
+                            <div class="example-math-step">
+                                <div class="example-math-title">Step 3: Dual Gradient Backpropagation Flow</div>
+                                <div>Since the MLM loss depends on the vocabulary mask, which in turn is a function of the POS head parameters, gradients flow backward through BOTH branches:
+                                <br/>
+                                1. Gradients from semantic cross-entropy $\frac{\partial \mathcal{L}_{MLM}}{\partial H_{seq}}$ flow to the MLM Head.
+                                <br/>
+                                2. Gradients from the MLM loss also flow through the logits Combiner directly back to the POS Classifier probabilities:
+                                <br/>
+                                <span class="math-inline">\frac{\partial \mathcal{L}_{MLM}}{\partial P(\text{Noun})} \propto \frac{\partial \mathcal{L}_{MLM}}{\partial y_{masked}} \times \mathbf{M}_{Noun}</span>.
+                                </div>
+                            </div>
+                            <div class="example-math-step">
+                                <div class="example-math-title">Step 4: Syntactic Co-tuning Effect</div>
+                                <div>Because the ground-truth word is <code>"cat"</code> (Noun), increasing the probability of predicting <code>"cat"</code> requires increasing $P(\text{Noun})$.
+                                <br/>
+                                This results in a gradient that pushes the POS classifier to output a higher probability for <code>Noun</code>.
+                                Even without direct POS labels, the semantic MLM reconstruction loss helps co-tune the POS tagging classifier!</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </article>
@@ -1435,6 +1557,19 @@
             if (currentSlide > 0) {
                 currentSlide--;
                 updateDeck();
+            }
+        }
+
+        // Toggle Expandable Example Walkthrough Box
+        function toggleExampleBox(id) {
+            const body = document.getElementById(id);
+            const icon = document.getElementById(id + '-icon');
+            if (body.classList.contains('show')) {
+                body.classList.remove('show');
+                icon.innerText = '▼';
+            } else {
+                body.classList.add('show');
+                icon.innerText = '▲';
             }
         }
 
