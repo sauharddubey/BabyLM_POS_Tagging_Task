@@ -690,21 +690,24 @@ Training follows a teacher-forcing regime (standard seq2seq), and evaluation use
 
 ## 8. Model Variants & Their Differences
 
-All 8 models share the same `MultiTaskBERT` architecture — what differs is **which loss terms are activated**:
+The repository includes both standard **MultiTaskBERT** and **LayeredPOSMLMBert** configurations:
 
-| Variant | MLM | NSP | POS | Notes |
-|---|:---:|:---:|:---:|---|
-| `BASEBERT` | ✓ | ✓ | — | Standard BERT pretraining |
-| `MLM_ONLY` | ✓ | — | — | MLM without sentence-level objective |
-| `POSBERT` | — | — | ✓ | POS-only, a syntax-focused baseline |
-| `MLMPOSBert` | ✓ | — | ✓ | MLM + syntactic supervision |
-| `NSPPOSBERT` | — | ✓ | ✓ | Sentence + syntactic objective |
-| `MLM_POS_NSPBERT` | ✓ | ✓ | ✓ | All three objectives |
-| `MLMPOS_alpha02` | ✓ | — | ✓ | MLM + POS with α=0.2 (reduced POS) |
-| `MLMPOSNSP_alpha02` | ✓ | ✓ | ✓ | All three with α=0.2 (reduced POS) |
+| Variant | Architecture | MLM | NSP | POS | Layering Mode | Notes |
+|---|---|:---:|:---:|:---:|---|---|
+| `BASEBERT` | MultiTaskBERT | ✓ | ✓ | — | — | Standard BERT pretraining |
+| `MLM_ONLY` | MultiTaskBERT | ✓ | — | — | — | MLM without sentence-level objective |
+| `POSBERT` | MultiTaskBERT | — | — | ✓ | — | POS-only, a syntax-focused baseline |
+| `MLMPOSBert` | MultiTaskBERT | ✓ | — | ✓ | — | MLM + syntactic supervision |
+| `NSPPOSBERT` | MultiTaskBERT | — | ✓ | ✓ | — | Sentence + syntactic objective |
+| `MLM_POS_NSPBERT` | MultiTaskBERT | ✓ | ✓ | ✓ | — | All three objectives |
+| `MLMPOS_alpha02` | MultiTaskBERT | ✓ | — | ✓ | — | MLM + POS with α=0.2 (reduced POS) |
+| `MLMPOSNSP_alpha02` | MultiTaskBERT | ✓ | ✓ | ✓ | — | All three with α=0.2 (reduced POS) |
+| `LAYERED_POS_MLM_SOFT` | LayeredPOSMLMBert | ✓ | — | ✓ | **Soft** | Differentiable probability mask overlay |
+| `LAYERED_POS_MLM_HARD` | LayeredPOSMLMBert | ✓ | — | ✓ | **Hard** | Argmax prediction mask overlay |
+| `LAYERED_POS_MLM_GOLD` | LayeredPOSMLMBert | ✓ | — | ✓ | **Gold** | Ground-truth tag mask overlay (train only) |
 
 > [!TIP]
-> The `alpha=0.2` variants test whether a **weaker** syntactic signal helps more than a full-strength one. If MLM is the dominant useful signal, alpha=1.0 might cause POS to overshadow and degrade representation quality.
+> The `alpha=0.2` variants test whether a **weaker** syntactic signal helps more than a full-strength one. The `LAYERED` models go a step further, restricting the search space of the vocabulary based on syntactic predictions.
 
 ---
 
@@ -822,3 +825,67 @@ Ex 1: word_ids = [-1, 0, 1, 2, -1, -1, -1, -1]
 
 > [!NOTE]
 > The `POSBERT` model (POS-only) still goes through tokenization and collation identically — it just has `mlm_active=False` in the collator (so `labels.fill_(-100)` and no masking is applied) and the NSP is not used. The POS head still receives the full unmasked sequence through BERT and learns syntactic structure without any MLM signal.
+
+---
+
+## 10. Layered POS-MLM Vocabulary Reduction Models
+
+**File:** [`src/models.py`](file:///dss/dsshome1/08/ge87ves2/desktop/BabyLM_Challenge/src/models.py) (class [`LayeredPOSMLMBert`](file:///dss/dsshome1/08/ge87ves2/desktop/BabyLM_Challenge/src/models.py#L173-L323))
+
+Standard multi-task models predict semantic tokens and syntactic parts-of-speech via independent output heads. In contrast, the **Layered** architecture models the conditional dependency of semantics on syntax:
+
+```
+[Input IDs] → [Base BERT Encoder] → [Token Representation H]
+                                           ↓
+                                  [POS Classifier]
+                                           ↓ (POS Probabilities)
+                                   [Vocabulary Mask]
+                                           ↓
+[Input IDs] → [Base BERT Encoder] → [MLM Classifier] → [Logits Combination]
+```
+
+### 10.1 Mathematical Masking Modes
+The model restricts the MLM prediction head's search space at the final softmax projection layer. This is achieved by computing a vocabulary mask $M_{mask} \in \mathbb{R}^{B \times L \times V}$ and adding its logarithm to the raw MLM logits:
+
+$$\text{MaskedLogits} = \text{RawLogits} + \log(M_{mask} + \epsilon)$$
+
+The vocabulary mask is computed in three different modes:
+
+1. **Gold Masking (`gold`)**:
+   - Uses the ground-truth part-of-speech labels (during training only):
+     $$M_{mask} = \mathbf{pos\_to\_vocab\_mask}[y_{gold}]$$
+   - Any vocabulary token that does not share the correct gold POS tag is zeroed out in the mask, reducing its logit to $-\infty$.
+
+2. **Hard Masking (`hard`)**:
+   - Uses the `argmax` predicted part-of-speech tag:
+     $$\hat{y}_{pos} = \arg\max(\text{pos\_logits})$$
+     $$M_{mask} = \mathbf{pos\_to\_vocab\_mask}[\hat{y}_{pos}]$$
+   - This creates a hard constraint based on model confidence, but the argmax operation is non-differentiable.
+
+3. **Soft Masking (`soft`)**:
+   - Computes POS tag probabilities using softmax:
+     $$P_{pos} = \text{softmax}(\text{pos\_logits}) \in \mathbb{R}^{B \times L \times C}$$
+   - Performs a batched matrix multiplication with the static mapping buffer $\mathbf{M}_{map} \in \mathbb{R}^{C \times V}$ (where $C$ is the number of POS categories, and $V$ is the vocab size):
+     $$M_{mask} = P_{pos} \times \mathbf{M}_{map}$$
+   - Because the matrix multiplication and softmax operations are fully differentiable, gradients from the semantic MLM loss flow backward *through* the mask directly into the POS Classifier parameters, co-tuning both heads.
+
+### 10.2 Example-Driven Backpropagation Flow (Soft Mode)
+Consider the sentence: *"the [MASK] sat on the mat."* where the masked word at index 1 is `"cat"`.
+
+1. **Forward Pass**:
+   - POS classifier predicts probabilities over index 1:
+     $$P(\text{Noun}) = 0.85, \quad P(\text{Verb}) = 0.10, \quad P(\text{Adjective}) = 0.05$$
+   - The vocabulary mask at index 1 is a mixture:
+     $$M_{mask} = 0.85 \cdot \mathbf{M}_{Noun} + 0.10 \cdot \mathbf{M}_{Verb} + 0.05 \cdot \mathbf{M}_{Adj}$$
+   - For vocabulary token `"cat"` (which is mapped under Noun):
+     $$M_{mask}[\text{"cat"}] \approx 0.85$$
+   - For vocabulary token `"sat"` (which is mapped under Verb):
+     $$M_{mask}[\text{"sat"}] \approx 0.10$$
+   - Masked logits add $\log(M_{mask} + \epsilon)$ to raw logits, suppressing `"sat"` while preserving `"cat"`.
+
+2. **Backward Pass**:
+   - The ground-truth token is `"cat"`. The cross-entropy loss $\mathcal{L}_{MLM}$ decreases if the probability of predicting `"cat"` increases.
+   - The probability of predicting `"cat"` depends directly on the mask value $M_{mask}[\text{"cat"}]$, which is scaled by $P(\text{Noun})$.
+   - By the chain rule:
+     $$\frac{\partial \mathcal{L}_{MLM}}{\partial y_{pos}(\text{Noun})} = \frac{\partial \mathcal{L}_{MLM}}{\partial \text{MaskedLogits}[\text{"cat"}]} \cdot \frac{\partial \text{MaskedLogits}[\text{"cat"}]}{\partial M_{mask}[\text{"cat"}]} \cdot \frac{\partial M_{mask}[\text{"cat"}]}{\partial P(\text{Noun})} \cdot \frac{\partial P(\text{Noun})}{\partial y_{pos}(\text{Noun})}$$
+   - This produces a strong gradient pushing the POS classifier to output a higher probability for the `Noun` category, regularizing semantic learning with syntactic structure directly during pretraining.
