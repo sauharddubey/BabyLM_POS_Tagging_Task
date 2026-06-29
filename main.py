@@ -14,7 +14,10 @@ MODELS = {
     "MLM_POS_NSPBERT": {"tasks": "mlm,nsp,pos", "dir": "./checkpoints/mlm_pos_nspbert", "loss": "$L_{MLM} + L_{NSP} + \\alpha L_{POS}$"},
     "MLM_ONLY": {"tasks": "mlm", "dir": "./checkpoints/mlm_only", "loss": "$L_{MLM}$"},
     "MLMPOS_alpha02": {"tasks": "mlm,pos", "dir": "./checkpoints/mlmpos_alpha02", "loss": "$L_{MLM} + 0.2 L_{POS}$", "alpha": 0.2},
-    "MLMPOSNSP_alpha02": {"tasks": "mlm,nsp,pos", "dir": "./checkpoints/mlmposnsp_alpha02", "loss": "$L_{MLM} + L_{NSP} + 0.2 L_{POS}$", "alpha": 0.2}
+    "MLMPOSNSP_alpha02": {"tasks": "mlm,nsp,pos", "dir": "./checkpoints/mlmposnsp_alpha02", "loss": "$L_{MLM} + L_{NSP} + 0.2 L_{POS}$", "alpha": 0.2},
+    "LAYERED_POS_MLM_SOFT": {"tasks": "mlm,pos", "dir": "./checkpoints/layered_pos_mlm_soft", "loss": "$L_{MLM} + \\alpha L_{POS}$ (Soft)", "model_type": "LayeredPOSMLMBert", "mask_type": "soft"},
+    "LAYERED_POS_MLM_HARD": {"tasks": "mlm,pos", "dir": "./checkpoints/layered_pos_mlm_hard", "loss": "$L_{MLM} + \\alpha L_{POS}$ (Hard)", "model_type": "LayeredPOSMLMBert", "mask_type": "hard"},
+    "LAYERED_POS_MLM_GOLD": {"tasks": "mlm,pos", "dir": "./checkpoints/layered_pos_mlm_gold", "loss": "$L_{MLM} + \\alpha L_{POS}$ (Gold)", "model_type": "LayeredPOSMLMBert", "mask_type": "gold"}
 }
 
 def run_cmd(cmd, description):
@@ -65,6 +68,8 @@ def main():
                 "--batch_size", str(args.batch_size),
                 "--lr", str(args.lr),
                 "--alpha", str(alpha_val),
+                "--model_type", cfg.get("model_type", "MultiTaskBERT"),
+                "--mask_type", cfg.get("mask_type", "soft"),
                 "--resume"
             ]
             run_cmd(train_cmd, f"Pretraining {model_name}")
@@ -99,7 +104,9 @@ def main():
                 "-u",
                 "eval.py",
                 "--checkpoint_path", checkpoint_path,
-                "--tasks", "perplexity,blimp,glue,bleu"
+                "--tasks", "perplexity,blimp,glue,bleu",
+                "--model_type", cfg.get("model_type", "MultiTaskBERT"),
+                "--mask_type", cfg.get("mask_type", "soft")
             ]
             run_cmd(eval_cmd, f"Running Offline Evaluation Suite for {model_name}")
 
@@ -204,7 +211,7 @@ This report compares five BERT-Mini models trained on the `BabyLM-2026-Strict-Sm
         print("==============================================\n")
         
         # Save to disk
-        report_path = "reports/evaluation_report.md"
+        report_path = "docs/evaluation_report.md"
         with open(report_path, "w") as f:
             f.write(report_content)
         print(f"Saved report to {report_path}")

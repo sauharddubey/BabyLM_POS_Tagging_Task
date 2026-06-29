@@ -11,8 +11,7 @@ env/
 # Data and cached datasets (large files)
 data/
 
-# Agent Files 
-Agent_Files/
+
 # Model Checkpoints (local pytorch checkpoints)
 checkpoints/
 

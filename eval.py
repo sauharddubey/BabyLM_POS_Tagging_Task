@@ -14,7 +14,7 @@ from tqdm import tqdm
 from sklearn.metrics import accuracy_score, f1_score, matthews_corrcoef
 from nltk.translate.bleu_score import corpus_bleu
 
-from src.models import MultiTaskBERT
+from src.models import MultiTaskBERT, LayeredPOSMLMBert
 from src.dataset import GLUEDataset, collate_glue, TranslationDataset, collate_seq2seq
 
 # Set device
@@ -368,8 +368,18 @@ def run_evaluation(args):
         pad_token_id=tokenizer.pad_token_id
     )
     
-    # Initialize MultiTaskBERT model
-    model = MultiTaskBERT(config, num_pos_tags=num_pos_tags)
+    # Initialize model
+    model_type = getattr(args, 'model_type', 'MultiTaskBERT')
+    mask_type = getattr(args, 'mask_type', 'soft')
+    
+    if model_type == 'LayeredPOSMLMBert':
+        print(f"Instantiating LayeredPOSMLMBert with mask_type={mask_type}...")
+        model = LayeredPOSMLMBert(config, num_pos_tags=num_pos_tags)
+        model.mask_type = mask_type
+    else:
+        print("Instantiating MultiTaskBERT...")
+        model = MultiTaskBERT(config, num_pos_tags=num_pos_tags)
+        
     # Load state dict
     model.load_state_dict(encoder_state_dict)
     model.to(device)
@@ -462,5 +472,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Evaluate Pretrained BERT Checkpoints")
     parser.add_argument("--checkpoint_path", type=str, required=True, help="Path to checkpoint file (e.g. checkpoint_best.pt)")
     parser.add_argument("--tasks", type=str, default="perplexity,blimp,glue,bleu", help="Evaluation tasks: perplexity,blimp,glue,bleu")
+    parser.add_argument("--model_type", type=str, default="MultiTaskBERT", choices=["MultiTaskBERT", "LayeredPOSMLMBert"], help="Model architecture")
+    parser.add_argument("--mask_type", type=str, default="soft", choices=["soft", "hard", "gold"], help="Layered model masking strategy")
     args = parser.parse_args()
     run_evaluation(args)

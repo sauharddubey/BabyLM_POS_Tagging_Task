@@ -10,7 +10,7 @@ from transformers import BertTokenizerFast, BertConfig, get_scheduler
 from datasets import load_from_disk
 from tqdm import tqdm
 
-from src.models import MultiTaskBERT
+from src.models import MultiTaskBERT, LayeredPOSMLMBert
 from src.dataset import PretrainDataset, MultiTaskCollator, print_batch_samples
 
 def run_pretraining(args_dict):
@@ -71,7 +71,15 @@ def run_pretraining(args_dict):
         classifier_dropout=0.1
     )
     
-    model = MultiTaskBERT(config, num_pos_tags=num_pos_tags)
+    model_type = args_dict.get('model_type', 'MultiTaskBERT')
+    mask_type = args_dict.get('mask_type', 'soft')
+    
+    if model_type == 'LayeredPOSMLMBert':
+        print(f"Initializing LayeredPOSMLMBert with mask_type={mask_type}...")
+        model = LayeredPOSMLMBert(config, num_pos_tags=num_pos_tags)
+    else:
+        print(f"Initializing MultiTaskBERT...")
+        model = MultiTaskBERT(config, num_pos_tags=num_pos_tags)
     
     # 6. Device, Optimizer, Scheduler
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -132,7 +140,10 @@ def run_pretraining(args_dict):
                 first_batch = False
                 
             # Forward pass
-            outputs = model(**batch_inputs, tasks=tasks, alpha=alpha)
+            if model_type == 'LayeredPOSMLMBert':
+                outputs = model(**batch_inputs, tasks=tasks, alpha=alpha, mask_type=mask_type)
+            else:
+                outputs = model(**batch_inputs, tasks=tasks, alpha=alpha)
             loss = outputs['loss']
             
             # Backward pass
@@ -160,7 +171,10 @@ def run_pretraining(args_dict):
         with torch.no_grad():
             for batch in val_loader:
                 batch_inputs = {k: v.to(device) if torch.is_tensor(v) else v for k, v in batch.items()}
-                outputs = model(**batch_inputs, tasks=tasks, alpha=alpha)
+                if model_type == 'LayeredPOSMLMBert':
+                    outputs = model(**batch_inputs, tasks=tasks, alpha=alpha, mask_type=mask_type)
+                else:
+                    outputs = model(**batch_inputs, tasks=tasks, alpha=alpha)
                 loss = outputs['loss']
                 val_loss += loss.item()
                 
@@ -200,6 +214,8 @@ if __name__ == "__main__":
     parser.add_argument("--batch_size", type=int, default=32, help="Batch size for training")
     parser.add_argument("--lr", type=float, default=5e-5, help="Learning rate")
     parser.add_argument("--alpha", type=float, default=1.0, help="Weight for POS loss")
+    parser.add_argument("--model_type", type=str, default="MultiTaskBERT", choices=["MultiTaskBERT", "LayeredPOSMLMBert"], help="Model architecture")
+    parser.add_argument("--mask_type", type=str, default="soft", choices=["soft", "hard", "gold"], help="Layered model masking strategy")
     parser.add_argument("--resume", action="store_true", help="Resume pretraining from latest checkpoint if available")
     
     args = parser.parse_args()

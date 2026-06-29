@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BabyLM Multi-Task & Layered BERT Lecture</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-main: #090d16;
+            --bg-card: rgba(17, 24, 39, 0.6);
+            --border-glow: rgba(99, 102, 241, 0.15);
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.4);
+            --secondary: #ec4899;
+            --tertiary: #10b981;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(236, 72, 153, 0.05) 0%, transparent 40%);
+            background-attachment: fixed;
+            min-height: 100vh;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem 3rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(8px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(9, 13, 22, 0.8);
+        }
+
+        .logo {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            font-size: 1.5rem;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+        }
+
+        .badge {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: #a5b4fc;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        main {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 2rem;
+        }
+
+        /* Navigation Sidebar */
+        .sidebar {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 1.5rem;
+            height: fit-content;
+            position: sticky;
+            top: 100px;
+        }
+
+        .sidebar-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+
+        .nav-list {
+            list-style: none;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .nav-item {
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-main);
+        }
+
+        .nav-item.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px var(--primary-glow);
+            font-weight: 600;
+        }
+
+        /* Content Deck */
+        .lecture-deck {
+            min-height: 600px;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .slide-card {
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+            padding: 2.5rem;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(12px);
+            display: none;
+            animation: fadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .slide-card.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .slide-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .slide-category {
+            color: var(--primary);
+            font-size: 0.85rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 0.5rem;
+        }
+
+        .slide-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.25rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-bottom: 0.75rem;
+        }
+
+        .slide-desc {
+            color: var(--text-muted);
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        /* Lecture Controls */
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-card);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1rem 1.5rem;
+        }
+
+        .btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+
+        .btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        .btn-primary:hover {
+            background: #4f46e5;
+            box-shadow: 0 6px 16px var(--primary-glow);
+        }
+
+        .progress-indicator {
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        /* INTERACTIVE VISUALIZATIONS */
+        .visual-container {
+            margin-top: 2rem;
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 12px;
+            padding: 1.5rem;
+            min-height: 300px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Tokenization / Pooling Interactive Widget */
+        .wordpiece-wrapper {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .token-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+        }
+
+        .token-card::after {
+            content: attr(data-id);
+            position: absolute;
+            bottom: -22px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .token-card:hover::after {
+            opacity: 1;
+        }
+
+        .token-card.active {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+            box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
+            transform: translateY(-4px);
+        }
+
+        .token-sub {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .vector-box {
+            display: flex;
+            gap: 1rem;
+            align-items: center;
+            margin-top: 1rem;
+            background: rgba(255, 255, 255, 0.02);
+            padding: 1rem;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 500px;
+            border: 1px dashed rgba(255, 255, 255, 0.05);
+        }
+
+        .vector-bar-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            width: 100%;
+        }
+
+        .vector-bar {
+            height: 8px;
+            background: var(--primary);
+            border-radius: 4px;
+            width: 50%;
+            transition: width 0.5s ease;
+        }
+
+        .vector-bar.second {
+            background: var(--secondary);
+            width: 30%;
+        }
+
+        .vector-bar.third {
+            background: var(--tertiary);
+            width: 75%;
+        }
+
+        /* Matrix Overlay Visualization */
+        .matrix-table {
+            display: grid;
+            grid-template-columns: repeat(6, 60px);
+            gap: 6px;
+            margin: 1.5rem 0;
+            background: rgba(255, 255, 255, 0.01);
+            padding: 1rem;
+            border-radius: 8px;
+        }
+
+        .matrix-cell {
+            width: 60px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.85rem;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .matrix-cell.highlight {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: var(--tertiary);
+            color: #a7f3d0;
+            font-weight: 600;
+        }
+
+        /* Playable Logits Simulator */
+        .logits-playground {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 2rem;
+            margin-top: 1rem;
+        }
+
+        .mode-toggle-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .mode-toggle-btn {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: var(--text-muted);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            text-align: left;
+            transition: all 0.2s ease;
+            font-weight: 600;
+        }
+
+        .mode-toggle-btn.active {
+            background: rgba(236, 72, 153, 0.1);
+            border-color: var(--secondary);
+            color: white;
+            box-shadow: 0 0 10px rgba(236, 72, 153, 0.15);
+        }
+
+        .logits-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .logit-row {
+            display: grid;
+            grid-template-columns: 100px 1fr 60px;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logit-word {
+            font-family: monospace;
+            font-size: 0.95rem;
+            text-align: right;
+        }
+
+        .logit-bar-outer {
+            height: 24px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .logit-bar-inner {
+            height: 100%;
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            width: 0%;
+            transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .logit-val {
+            font-size: 0.85rem;
+            font-family: monospace;
+        }
+
+        .pos-indicator-box {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            width: 100%;
+        }
+
+        .pos-indicator-tag {
+            font-family: monospace;
+            font-weight: 700;
+            background: var(--tertiary);
+            color: #064e3b;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        /* SVG Network Architecture */
+        .svg-architecture {
+            width: 100%;
+            max-width: 600px;
+            height: 280px;
+        }
+
+        .node-circle {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .node-circle:hover {
+            fill: var(--primary) !important;
+            r: 10 !important;
+        }
+
+        .pulse-line {
+            stroke-dasharray: 8;
+            animation: dash 5s linear infinite;
+        }
+
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -80;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">BABYLM LECTURE SUITE</div>
+        <div class="badge">Strict-Small Track 2026</div>
+    </header>
+
+    <main>
+        <!-- Sidebar Navigation -->
+        <section class="sidebar">
+            <h3 class="sidebar-title">Lecture Syllabus</h3>
+            <ul class="nav-list">
+                <li class="nav-item active" onclick="gotoSlide(0)">
+                    <span>01.</span> The Challenge Goal
+                </li>
+                <li class="nav-item" onclick="gotoSlide(1)">
+                    <span>02.</span> Token Subword Puzzle
+                </li>
+                <li class="nav-item" onclick="gotoSlide(2)">
+                    <span>03.</span> Average Pooling Matrix
+                </li>
+                <li class="nav-item" onclick="gotoSlide(3)">
+                    <span>04.</span> Multi-Task Branching
+                </li>
+                <li class="nav-item" onclick="gotoSlide(4)">
+                    <span>05.</span> Vocab Reduction Aim
+                </li>
+                <li class="nav-item" onclick="gotoSlide(5)">
+                    <span>06.</span> Layered Mask Simulator
+                </li>
+            </ul>
+        </section>
+
+        <!-- Slide Deck Content -->
+        <section class="lecture-deck">
+            
+            <!-- Slide 1: Welcome -->
+            <article class="slide-card active">
+                <div class="slide-header">
+                    <span class="slide-category">Introduction</span>
+                    <h2 class="slide-title">Learning Language from 10M Tokens</h2>
+                    <p class="slide-desc">
+                        A typical human child hears roughly 10 million words by age 2. However, large language models (LLMs) like GPT-4 are pretrained on trillions of tokens. The <strong>BabyLM Challenge</strong> asks: <em>How can we build syntactically and semantically rich language representations with strict small-scale limitations?</em> Our approach integrates syntactic constraints directly into the pretraining lifecycle.
+                    </p>
+                </div>
+                
+                <div class="visual-container">
+                    <svg class="svg-architecture" viewBox="0 0 600 240">
+                        <!-- Network Nodes -->
+                        <g id="input-nodes">
+                            <circle class="node-circle" cx="100" cy="50" r="7" fill="#6366f1" />
+                            <circle class="node-circle" cx="100" cy="110" r="7" fill="#6366f1" />
+                            <circle class="node-circle" cx="100" cy="170" r="7" fill="#6366f1" />
+                            <text x="50" y="115" fill="#9ca3af" font-size="11">Input Sequence</text>
+                        </g>
+
+                        <g id="hidden-nodes">
+                            <circle class="node-circle" cx="300" cy="50" r="7" fill="#a5b4fc" />
+                            <circle class="node-circle" cx="300" cy="110" r="7" fill="#a5b4fc" />
+                            <circle class="node-circle" cx="300" cy="170" r="7" fill="#a5b4fc" />
+                            <text x="270" y="210" fill="#9ca3af" font-size="12">Shared Base Encoder</text>
+                        </g>
+
+                        <!-- Outputs -->
+                        <g id="output-nodes">
+                            <circle class="node-circle" cx="500" cy="50" r="8" fill="#10b981" />
+                            <circle class="node-circle" cx="500" cy="110" r="8" fill="#ec4899" />
+                            <circle class="node-circle" cx="500" cy="170" r="8" fill="#3b82f6" />
+                            <text x="520" y="55" fill="#f3f4f6" font-size="11">Semantics (MLM)</text>
+                            <text x="520" y="115" fill="#f3f4f6" font-size="11">Syntax (POS)</text>
+                            <text x="520" y="175" fill="#f3f4f6" font-size="11">Context (NSP)</text>
+                        </g>
+
+                        <!-- Connections -->
+                        <path class="pulse-line" d="M 100 110 L 300 110" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
+                        <path class="pulse-line" d="M 100 50 L 300 50" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
+                        <path class="pulse-line" d="M 100 170 L 300 170" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
+                        
+                        <line x1="300" y1="110" x2="500" y2="50" stroke="rgba(255,255,255,0.1)" stroke-width="1.5" />
+                        <line x1="300" y1="110" x2="500" y2="110" stroke="rgba(255,255,255,0.1)" stroke-width="1.5" />
+                        <line x1="300" y1="110" x2="500" y2="170" stroke="rgba(255,255,255,0.1)" stroke-width="1.5" />
+                    </svg>
+                </div>
+            </article>
+
+            <!-- Slide 2: Token Puzzle -->
+            <article class="slide-card">
+                <div class="slide-header">
+                    <span class="slide-category">Subword Alignment</span>
+                    <h2 class="slide-title">The Token-to-POS Alignment Puzzle</h2>
+                    <p class="slide-desc">
+                        NLTK tags Part-of-Speech labels at the word level (e.g. <code>"cats"</code> -> <code>NNS</code>). However, BERT uses a WordPiece subword tokenizer (e.g. <code>"cats"</code> -> <code>"cat"</code> + <code>"##s"</code>). This mismatch creates a structural discrepancy. Click the cards below to see how subword tokens relate to their parent word representations.
+                    </p>
+                </div>
+
+                <div class="visual-container">
+                    <div class="wordpiece-wrapper">
+                        <div class="token-card active" data-id="Word 0: the (DT)" onclick="selectToken(this, 0.9, 0.1, 0.05)">
+                            the
+                            <div class="token-sub">subword 0</div>
+                        </div>
+                        <div class="token-card" data-id="Word 1: cats (NNS)" onclick="selectToken(this, 0.1, 0.85, 0.05)">
+                            cat
+                            <div class="token-sub">subword 1</div>
+                        </div>
+                        <div class="token-card" data-id="Word 1: cats (NNS)" onclick="selectToken(this, 0.1, 0.85, 0.05)">
+                            ##s
+                            <div class="token-sub">subword 2</div>
+                        </div>
+                        <div class="token-card" data-id="Word 2: jumped (VBD)" onclick="selectToken(this, 0.05, 0.05, 0.9)">
+                            jump
+                            <div class="token-sub">subword 3</div>
+                        </div>
+                        <div class="token-card" data-id="Word 2: jumped (VBD)" onclick="selectToken(this, 0.05, 0.05, 0.9)">
+                            ##ed
+                            <div class="token-sub">subword 4</div>
+                        </div>
+                    </div>
+
+                    <div class="vector-box">
+                        <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); width: 140px;">Active Representation:</span>
+                        <div class="vector-bar-group">
+                            <div class="vector-bar" id="bar1"></div>
+                            <div class="vector-bar second" id="bar2"></div>
+                            <div class="vector-bar third" id="bar3"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="pos-indicator-box">
+                        <span>Aligned Parent Word Target:</span>
+                        <span class="pos-indicator-tag" id="parent-word-info">Word 0: the (DT)</span>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Slide 3: Average Pooling -->
+            <article class="slide-card">
+                <div class="slide-header">
+                    <span class="slide-category">Mathematical Modeling</span>
+                    <h2 class="slide-title">The Subword Average Pooling Matrix</h2>
+                    <p class="slide-desc">
+                        To resolve the subword-word mismatch, we compile a sparse-dense coefficient matrix <strong>P</strong>. During the model's forward pass, we perform a batched matrix multiplication of <strong>P</strong> with the sequence states <strong>H</strong>. Hover over rows below to see how matrix multiplication combines subword embeddings.
+                    </p>
+                </div>
+
+                <div class="visual-container">
+                    <div style="display: flex; gap: 2rem; align-items: center; width: 100%; justify-content: space-around;">
+                        
+                        <!-- Left Matrix -->
+                        <div>
+                            <h4 style="margin-bottom: 0.5rem; text-align: center; color: var(--text-muted)">Matrix P (Coefficients)</h4>
+                            <div class="matrix-table" id="pooling-matrix">
+                                <!-- Row 0 -->
+                                <div class="matrix-cell highlight" onmouseover="highlightRow(0)">1.0</div>
+                                <div class="matrix-cell highlight" onmouseover="highlightRow(0)">0.0</div>
+                                <div class="matrix-cell highlight" onmouseover="highlightRow(0)">0.0</div>
+                                <div class="matrix-cell highlight" onmouseover="highlightRow(0)">0.0</div>
+                                <div class="matrix-cell highlight" onmouseover="highlightRow(0)">0.0</div>
+                                <div class="matrix-cell highlight" style="background: rgba(255,255,255,0.05); cursor: default;">Word 0</div>
+                                <!-- Row 1 -->
+                                <div class="matrix-cell" onmouseover="highlightRow(1)">0.0</div>
+                                <div class="matrix-cell" onmouseover="highlightRow(1)">0.5</div>
+                                <div class="matrix-cell" onmouseover="highlightRow(1)">0.5</div>
+                                <div class="matrix-cell" onmouseover="highlightRow(1)">0.0</div>
+                                <div class="matrix-cell" onmouseover="highlightRow(1)">0.0</div>
+                                <div class="matrix-cell" style="background: rgba(255,255,255,0.05); cursor: default;">Word 1</div>
+                                <!-- Row 2 -->
+                                <div class="matrix-cell" onmouseover="highlightRow(2)">0.0</div>
+                                <div class="matrix-cell" onmouseover="highlightRow(2)">0.0</div>
+                                <div class="matrix-cell" onmouseover="highlightRow(2)">0.0</div>
+                                <div class="matrix-cell" onmouseover="highlightRow(2)">0.5</div>
+                                <div class="matrix-cell" onmouseover="highlightRow(2)">0.5</div>
+                                <div class="matrix-cell" style="background: rgba(255,255,255,0.05); cursor: default;">Word 2</div>
+                            </div>
+                        </div>
+
+                        <!-- Right Vector states representation -->
+                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 1.5rem; width: 300px;">
+                            <h4 style="margin-bottom: 0.75rem; text-align: center;">Pooling Math Output</h4>
+                            <p style="font-family: monospace; font-size: 0.9rem;" id="pooling-math-text">
+                                Word_0 State = <br/>1.0 * H_seq[0]
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Slide 4: Multi-Task branching -->
+            <article class="slide-card">
+                <div class="slide-header">
+                    <span class="slide-category">Pretraining Architecture</span>
+                    <h2 class="slide-title">Multi-Task Loss Orchestration</h2>
+                    <p class="slide-desc">
+                        Under our parallel setup, the model weights are optimized via a unified combined loss function: 
+                        <br/>
+                        <code style="background: rgba(0,0,0,0.3); padding: 0.2rem 0.5rem; border-radius: 4px; display: inline-block; margin-top: 0.5rem;">Total Loss = L_MLM + L_NSP + α * L_POS</code>
+                        <br/><br/>
+                        During backpropagation, the gradients of the POS classifier propagate through the pooling matrix back to the base BERT encoder layers, adjusting representations to align simultaneously with semantics (MLM) and syntactic tag distributions.
+                    </p>
+                </div>
+
+                <div class="visual-container">
+                    <div style="width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 1rem;">
+                        <h4 style="text-align: center; margin-bottom: 0.5rem;">Loss Contribution Simulator</h4>
+                        
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem;">
+                                <span>Semantics Loss (L_MLM)</span>
+                                <span id="val-mlm">Loss: 2.10</span>
+                            </div>
+                            <input type="range" min="0" max="400" value="210" style="width: 100%" oninput="updateLosses()">
+                        </div>
+
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem;">
+                                <span>Syntax Loss (L_POS)</span>
+                                <span id="val-pos">Loss: 0.80</span>
+                            </div>
+                            <input type="range" min="0" max="200" value="80" style="width: 100%" oninput="updateLosses()">
+                        </div>
+
+                        <div>
+                            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem;">
+                                <span>Syntax scaling factor (α)</span>
+                                <span id="val-alpha">Weight: 1.0</span>
+                            </div>
+                            <input type="range" min="0" max="200" value="100" style="width: 100%" oninput="updateLosses()">
+                        </div>
+
+                        <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; margin-top: 0.5rem; display: flex; justify-content: space-between; font-weight: 700; font-size: 1.15rem;">
+                            <span>Combined Network Loss:</span>
+                            <span id="val-total" style="color: var(--secondary);">2.90</span>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Slide 5: Layered Vocab Restriction -->
+            <article class="slide-card">
+                <div class="slide-header">
+                    <span class="slide-category">Layered Pretraining</span>
+                    <h2 class="slide-title">The Layered POS Vocabulary Filtering</h2>
+                    <p class="slide-desc">
+                        Predicting 1-out-of-30,522 tokens is challenging for small scale models. However, grammar tells us that a masked slot has a single valid POS category. The **Layered POS** architecture first predicts POS tags at the token level, then retrieves an allowed vocabulary subset (e.g. noun words only) and overlays it onto the MLM softmax layer to reduce entropy.
+                    </p>
+                </div>
+
+                <div class="visual-container">
+                    <div style="width: 100%; max-width: 600px; padding: 1.5rem; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                        <h4 style="margin-bottom: 1rem; text-align: center;">How the Layered Constraints Reshape Logits</h4>
+                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.95rem;">
+                            <li style="display: flex; gap: 1rem; align-items: start;">
+                                <span style="background: var(--primary); width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink:0;"></span>
+                                <span><strong>Narrowed search space:</strong> Filters out verbs, prepositions, or adjectives when predicting a noun slot.</span>
+                            </li>
+                            <li style="display: flex; gap: 1rem; align-items: start;">
+                                <span style="background: var(--secondary); width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink:0;"></span>
+                                <span><strong>Differentiable transitions (Soft Masking):</strong> Computes weighted combinations based on predictions to allow training backpropagation.</span>
+                            </li>
+                            <li style="display: flex; gap: 1rem; align-items: start;">
+                                <span style="background: var(--tertiary); width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink:0;"></span>
+                                <span><strong>Syntactic constraints overlay:</strong> raw MLM logits are shifted by adding log(mask + epsilon).</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Slide 6: Layered Mask Simulator -->
+            <article class="slide-card">
+                <div class="slide-header">
+                    <span class="slide-category">Interactive Playground</span>
+                    <h2 class="slide-title">Interactive Logits Filtering Simulator</h2>
+                    <p class="slide-desc">
+                        Simulate the forward pass of <code>LayeredPOSMLMBert</code> for the sentence: <em>"the [MASK] sat on the mat."</em>
+                        Select different masking modes below to see how they affect the model's vocabulary logits distribution.
+                    </p>
+                </div>
+
+                <div class="visual-container">
+                    <div class="logits-playground">
+                        
+                        <!-- Left controls -->
+                        <div class="mode-toggle-group">
+                            <button class="mode-toggle-btn active" id="btn-raw" onclick="updateLogitsMode('raw')">Raw MLM Logits (Unmasked)</button>
+                            <button class="mode-toggle-btn" id="btn-gold" onclick="updateLogitsMode('gold')">Gold Masking (NN only)</button>
+                            <button class="mode-toggle-btn" id="btn-hard" onclick="updateLogitsMode('hard')">Hard Masking (NN predicted)</button>
+                            <button class="mode-toggle-btn" id="btn-soft" onclick="updateLogitsMode('soft')">Soft Masking (Prob Mixture)</button>
+                        </div>
+
+                        <!-- Right Chart -->
+                        <div class="logits-chart">
+                            
+                            <!-- Row 1: cat -->
+                            <div class="logit-row">
+                                <div class="logit-word">cat (Noun)</div>
+                                <div class="logit-bar-outer">
+                                    <div class="logit-bar-inner" id="bar-cat"></div>
+                                </div>
+                                <div class="logit-val" id="val-cat">0%</div>
+                            </div>
+
+                            <!-- Row 2: dog -->
+                            <div class="logit-row">
+                                <div class="logit-word">dog (Noun)</div>
+                                <div class="logit-bar-outer">
+                                    <div class="logit-bar-inner" id="bar-dog"></div>
+                                </div>
+                                <div class="logit-val" id="val-dog">0%</div>
+                            </div>
+
+                            <!-- Row 3: sat -->
+                            <div class="logit-row">
+                                <div class="logit-word">sat (Verb)</div>
+                                <div class="logit-bar-outer">
+                                    <div class="logit-bar-inner" id="bar-sat"></div>
+                                </div>
+                                <div class="logit-val" id="val-sat">0%</div>
+                            </div>
+
+                            <!-- Row 4: happy -->
+                            <div class="logit-row">
+                                <div class="logit-word">happy (Adj)</div>
+                                <div class="logit-bar-outer">
+                                    <div class="logit-bar-inner" id="bar-happy"></div>
+                                </div>
+                                <div class="logit-val" id="val-happy">0%</div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </article>
+
+            <!-- Bottom Deck Controls -->
+            <div class="controls">
+                <button class="btn" id="prev-btn" onclick="prevSlide()">Previous Step</button>
+                <div class="progress-indicator" id="progress-text">Step 1 of 6</div>
+                <button class="btn btn-primary" id="next-btn" onclick="nextSlide()">Next Step</button>
+            </div>
+
+        </section>
+    </main>
+
+    <script>
+        // Slide controller
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide-card');
+        const navItems = document.querySelectorAll('.nav-item');
+        const progressText = document.getElementById('progress-text');
+        
+        function updateDeck() {
+            slides.forEach((slide, idx) => {
+                slide.classList.remove('active');
+                navItems[idx].classList.remove('active');
+            });
+            slides[currentSlide].classList.add('active');
+            navItems[currentSlide].classList.add('active');
+            progressText.innerText = `Step ${currentSlide + 1} of ${slides.length}`;
+            
+            // Trigger specific animations on slide load
+            if (currentSlide === 1) {
+                // Trigger subword vectors init
+                document.querySelector('.token-card.active').click();
+            } else if (currentSlide === 5) {
+                // Trigger simulator logits init
+                updateLogitsMode('raw');
+            }
+        }
+
+        function nextSlide() {
+            if (currentSlide < slides.length - 1) {
+                currentSlide++;
+                updateDeck();
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                updateDeck();
+            }
+        }
+
+        function gotoSlide(idx) {
+            currentSlide = idx;
+            updateDeck();
+        }
+
+        // Slide 2: Interactive Token Selection
+        function selectToken(element, w1, w2, w3) {
+            // Remove active from all cards
+            document.querySelectorAll('.token-card').forEach(card => card.classList.remove('active'));
+            element.classList.add('active');
+
+            // Update vectors
+            document.getElementById('bar1').style.width = (w1 * 100) + '%';
+            document.getElementById('bar2').style.width = (w2 * 100) + '%';
+            document.getElementById('bar3').style.width = (w3 * 100) + '%';
+
+            // Update parent word indicator
+            document.getElementById('parent-word-info').innerText = element.getAttribute('data-id');
+        }
+
+        // Slide 3: Interactive Pooling Matrix
+        function highlightRow(rowIdx) {
+            const cells = document.querySelectorAll('.matrix-cell');
+            cells.forEach(cell => cell.classList.remove('highlight'));
+            
+            // A matrix table has 3 rows x 6 columns
+            const startCell = rowIdx * 6;
+            for (let i = 0; i < 5; i++) {
+                cells[startCell + i].classList.add('highlight');
+            }
+
+            // Update descriptive math label text
+            const mathLabel = document.getElementById('pooling-math-text');
+            if (rowIdx === 0) {
+                mathLabel.innerHTML = "<strong>Pooling Row 0:</strong><br/>Word_0 State (the) = <br/>1.0 * H_seq[0] (the)";
+            } else if (rowIdx === 1) {
+                mathLabel.innerHTML = "<strong>Pooling Row 1:</strong><br/>Word_1 State (cats) = <br/>0.5 * H_seq[1] (cat) + <br/>0.5 * H_seq[2] (##s)";
+            } else if (rowIdx === 2) {
+                mathLabel.innerHTML = "<strong>Pooling Row 2:</strong><br/>Word_2 State (jumped) = <br/>0.5 * H_seq[3] (jump) + <br/>0.5 * H_seq[4] (##ed)";
+            }
+        }
+
+        // Slide 4: Multi-Task Losses combination calculator
+        function updateLosses() {
+            const inputs = document.querySelectorAll('input[type="range"]');
+            const mlm = parseFloat(inputs[0].value) / 100;
+            const pos = parseFloat(inputs[1].value) / 100;
+            const alpha = parseFloat(inputs[2].value) / 100;
+
+            document.getElementById('val-mlm').innerText = `Loss: ${mlm.toFixed(2)}`;
+            document.getElementById('val-pos').innerText = `Loss: ${pos.toFixed(2)}`;
+            document.getElementById('val-alpha').innerText = `Weight: ${alpha.toFixed(2)}`;
+
+            const total = mlm + (alpha * pos);
+            document.getElementById('val-total').innerText = total.toFixed(2);
+        }
+
+        // Slide 6: Logits Filter Playground Simulator
+        function updateLogitsMode(mode) {
+            // Remove active style from toggles
+            document.querySelectorAll('.mode-toggle-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${mode}`).classList.add('active');
+
+            const barCat = document.getElementById('bar-cat');
+            const barDog = document.getElementById('bar-dog');
+            const barSat = document.getElementById('bar-sat');
+            const barHappy = document.getElementById('bar-happy');
+
+            const valCat = document.getElementById('val-cat');
+            const valDog = document.getElementById('val-dog');
+            const valSat = document.getElementById('val-sat');
+            const valHappy = document.getElementById('val-happy');
+
+            if (mode === 'raw') {
+                // Equal chance or standard noise
+                setProbabilities(35, 25, 30, 10);
+            } else if (mode === 'gold') {
+                // Gold constraint: Nouns only, sat/happy are fully 0%
+                setProbabilities(60, 40, 0, 0);
+            } else if (mode === 'hard') {
+                // Predicts NN, masks other categories
+                setProbabilities(58, 42, 0, 0);
+            } else if (mode === 'soft') {
+                // Prob mixture of tags (e.g. 80% Noun, 20% Adjective)
+                setProbabilities(50, 36, 0, 14);
+            }
+        }
+
+        function setProbabilities(p1, p2, p3, p4) {
+            document.getElementById('bar-cat').style.width = p1 + '%';
+            document.getElementById('bar-dog').style.width = p2 + '%';
+            document.getElementById('bar-sat').style.width = p3 + '%';
+            document.getElementById('bar-happy').style.width = p4 + '%';
+
+            document.getElementById('val-cat').innerText = p1 + '%';
+            document.getElementById('val-dog').innerText = p2 + '%';
+            document.getElementById('val-sat').innerText = p3 + '%';
+            document.getElementById('val-happy').innerText = p4 + '%';
+        }
+    </script>
+</body>
+</html>

@@ -169,3 +169,154 @@ class MultiTaskBERT(nn.Module):
             outputs_dict[k] = v.item()
             
         return outputs_dict
+
+class LayeredPOSMLMBert(nn.Module):
+    """
+    Layered BERT model. Predicts Part-of-Speech (POS) tags at the token level first,
+    then uses the POS prediction to mask (restrict) the MLM head's vocabulary softmax.
+    """
+    def __init__(self, config: BertConfig, num_pos_tags: int, pos_to_vocab_path: str = "data/pos_to_vocab.json"):
+        super().__init__()
+        self.config = config
+        self.num_pos_tags = num_pos_tags
+        
+        # 1. Base BERT encoder
+        self.bert = BertModel(config)
+        
+        # 2. Masked Language Modeling Head
+        self.mlm_head = BERTMLMHead(config)
+        
+        # 3. Next Sentence Prediction Head
+        self.nsp_head = nn.Linear(config.hidden_size, 2)
+        
+        # 4. Token-level Part-of-Speech Prediction Head
+        self.pos_classifier = nn.Linear(config.hidden_size, num_pos_tags)
+
+        # Tie the weights of the final MLM projection layer with the word embeddings
+        self.mlm_head.predictions[3].weight = self.bert.embeddings.word_embeddings.weight
+
+        # 5. Load POS-to-Vocab mask
+        import os
+        import json
+        if os.path.exists(pos_to_vocab_path):
+            with open(pos_to_vocab_path, "r") as f:
+                pos_to_vocab = json.load(f)
+            mask_tensor = torch.zeros(num_pos_tags, config.vocab_size)
+            for pos_id_str, token_ids in pos_to_vocab.items():
+                pos_id = int(pos_id_str)
+                mask_tensor[pos_id, token_ids] = 1.0
+            self.register_buffer("pos_to_vocab_mask", mask_tensor, persistent=False)
+        else:
+            # Fallback: allow all tokens
+            self.register_buffer("pos_to_vocab_mask", torch.ones(num_pos_tags, config.vocab_size), persistent=False)
+        self.mask_type = 'soft'
+
+    def forward(
+        self,
+        input_ids,
+        attention_mask=None,
+        token_type_ids=None,
+        labels=None,                 # MLM target labels [batch_size, seq_len]
+        next_sentence_label=None,    # NSP target labels [batch_size]
+        word_ids=None,               # Word indices (kept for signature compatibility)
+        pos_labels=None,             # Aligned POS labels [batch_size, seq_len]
+        tasks=None,                  # List of tasks to compute: ['mlm', 'nsp', 'pos']
+        alpha=1.0,                   # Weight for POS loss relative to MLM
+        mask_type=None,              # Masking type: 'soft', 'hard', 'gold'
+        epsilon=1e-7
+    ):
+        if mask_type is None:
+            mask_type = getattr(self, 'mask_type', 'soft')
+        if tasks is None:
+            tasks = ['mlm', 'nsp', 'pos']
+            
+        # Get hidden states from BERT base model
+        outputs = self.bert(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            token_type_ids=token_type_ids
+        )
+        
+        sequence_output = outputs[0]  # [batch_size, seq_len, hidden_size]
+        pooler_output = outputs[1]    # [batch_size, hidden_size]
+        
+        losses = {}
+        total_loss = 0.0
+        outputs_dict = {}
+        
+        # --- 1. Predict POS tags (needed for layering or if 'pos' in tasks) ---
+        # Predict POS tags at token level: shape [batch_size, seq_len, num_pos_tags]
+        pos_logits = self.pos_classifier(sequence_output)
+        outputs_dict['pos_logits'] = pos_logits
+        
+        if 'pos' in tasks and pos_labels is not None:
+            # Compute token-level classification loss (ignoring special tokens marked with -100)
+            pos_loss = F.cross_entropy(
+                pos_logits.view(-1, self.num_pos_tags),
+                pos_labels.view(-1),
+                ignore_index=-100
+            )
+            losses['pos_loss'] = pos_loss
+        else:
+            losses['pos_loss'] = torch.tensor(0.0, device=input_ids.device)
+
+        # --- 2. Masked Language Modeling (MLM) Task ---
+        if 'mlm' in tasks:
+            # Compute standard (unmasked) MLM logits
+            mlm_logits = self.mlm_head(sequence_output)  # [batch_size, seq_len, vocab_size]
+            
+            # Apply POS-based vocabulary filtering
+            if mask_type == 'gold' and pos_labels is not None and self.training:
+                # Use gold POS tags (during training only)
+                clean_pos_labels = pos_labels.clone()
+                clean_pos_labels[clean_pos_labels == -100] = 0
+                vocab_mask = self.pos_to_vocab_mask[clean_pos_labels]  # [batch_size, seq_len, vocab_size]
+                masked_logits = mlm_logits + torch.log(vocab_mask + epsilon)
+            elif mask_type == 'hard':
+                # Use predicted POS tags (argmax)
+                pred_pos_tags = pos_logits.argmax(dim=-1)  # [batch_size, seq_len]
+                vocab_mask = self.pos_to_vocab_mask[pred_pos_tags]  # [batch_size, seq_len, vocab_size]
+                masked_logits = mlm_logits + torch.log(vocab_mask + epsilon)
+            else:  # 'soft' or fallback for 'gold' at evaluation time
+                # Soft Masking: Differentiable mixture
+                pos_probs = F.softmax(pos_logits, dim=-1)  # [batch_size, seq_len, num_pos_tags]
+                # Batched matrix multiplication: pos_probs is [B, L, C], mask is [C, V] -> [B, L, V]
+                vocab_mask = torch.matmul(pos_probs, self.pos_to_vocab_mask)
+                masked_logits = mlm_logits + torch.log(vocab_mask + epsilon)
+                
+            outputs_dict['mlm_logits'] = masked_logits
+            
+            if labels is not None:
+                mlm_loss = F.cross_entropy(masked_logits.view(-1, self.config.vocab_size), labels.view(-1))
+                losses['mlm_loss'] = mlm_loss
+                
+        # --- 3. Next Sentence Prediction (NSP) Task ---
+        if 'nsp' in tasks:
+            nsp_logits = self.nsp_head(pooler_output)
+            outputs_dict['nsp_logits'] = nsp_logits
+            if next_sentence_label is not None:
+                nsp_loss = F.cross_entropy(nsp_logits.view(-1, 2), next_sentence_label.view(-1))
+                losses['nsp_loss'] = nsp_loss
+
+        # --- Aggregate Losses ---
+        mlm_val = losses.get('mlm_loss', torch.tensor(0.0, device=input_ids.device))
+        nsp_val = losses.get('nsp_loss', torch.tensor(0.0, device=input_ids.device))
+        pos_val = losses.get('pos_loss', torch.tensor(0.0, device=input_ids.device))
+        
+        # Loss aggregation: MLM + NSP + alpha * POS
+        total_loss = 0.0
+        if 'mlm' in tasks:
+            total_loss += mlm_val
+        if 'nsp' in tasks:
+            total_loss += nsp_val
+        if 'pos' in tasks:
+            total_loss += alpha * pos_val
+            
+        outputs_dict['loss'] = total_loss
+        
+        # Add individual losses to outputs dict
+        for k, v in losses.items():
+            outputs_dict[k] = v.item()
+            
+        return outputs_dict
+

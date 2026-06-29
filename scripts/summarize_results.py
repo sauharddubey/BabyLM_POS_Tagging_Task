@@ -4,7 +4,7 @@ from pathlib import Path
 # Paths
 WORKSPACE_DIR = Path("/dss/dsshome1/08/ge87ves2/desktop/BabyLM_Challenge")
 RESULTS_DIR = WORKSPACE_DIR / "babylm-eval" / "strict" / "results"
-OUTPUT_FILE = WORKSPACE_DIR / "reports" / "results_summary.md"
+OUTPUT_FILE = WORKSPACE_DIR / "docs" / "results_summary.md"
 
 FINETUNE_METRIC = {
     "boolq":   "accuracy",

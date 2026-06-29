@@ -18,15 +18,20 @@ The codebase is organized as follows:
 ├── train.py                   # Custom pretraining script
 ├── eval.py                    # Evaluation script (PPL, BLiMP, and GLUE)
 ├── preprocess.py              # Download, tokenizer, POS tagger & caching script
+├── Approach.md                # Explanations of pretraining architectures & model variants
 │
 ├── src/                       # Core package modules
 │   ├── dataset.py             # Pretrain/downstream datasets & collators
 │   └── models.py              # MultiTaskBERT model architecture & heads
 │
+├── tests/                     # Dedicated test suites
+│   ├── verify_pipeline.py     # Verify pipeline modules and layers
+│   └── verify_layered_pipeline.py # Verify layered POS-masking pipeline layers
+│
 ├── scripts/                   # Script entries and jobs
 │   ├── convert_checkpoints.py # Export best checkpoints to HuggingFace format
-│   ├── verify_pipeline.py     # Verify pipeline modules and layers
 │   ├── summarize_results.py   # Aggregate official BabyLM eval results
+│   ├── build_pos_vocab_map.py # Compiles POS-to-Vocab allowed mapping
 │   ├── job_preprocess.sh      # Slurm pre-processing script
 │   └── job_train_eval.sh      # Slurm pretraining orchestrator script
 │
@@ -39,11 +44,13 @@ The codebase is organized as follows:
 │
 ├── checkpoints/               # Local training checkpoints (gitignored)
 ├── logs/                      # Slurm output log files (gitignored)
-├── babylm-eval/               # Official BabyLM eval pipeline (gitignored, clone separately — see Setup)
-├── reports/                   # Compiled evaluation markdown files
+├── babylm-eval/               # Official BabyLM eval pipeline (gitignored)
+├── docs/                      # Compiled evaluation, walkthoughs and developer guides
 │   ├── results_summary.md     # Aggregated downstream official results
 │   ├── evaluation_report.md   # Comparative analysis of model variants
-│   └── PipelineExplanation.md # Explanation of the multi-task setup
+│   ├── PipelineExplanation.md # Explanation of the multi-task setup
+│   ├── walkthrough.md         # Walkthrough notes of repository changes
+│   └── developer_guide.md     # Setup, run, and model configuration details
 └── hf_models/                 # HuggingFace-compatible export models (gitignored)
 ```
 
@@ -125,12 +132,13 @@ Once pretraining is complete:
    ```bash
    python scripts/summarize_results.py
    ```
-   The results will be written to `reports/results_summary.md`.
+   The results will be written to `docs/results_summary.md`.
 
 ---
 
 ## 🛠️ Verification and Testing
 To run the automated test suite that validates dataset collation, word-level average pooling dimensions, and backward compatibility:
 ```bash
-python scripts/verify_pipeline.py
+python tests/verify_pipeline.py
+python tests/verify_layered_pipeline.py
 ```
