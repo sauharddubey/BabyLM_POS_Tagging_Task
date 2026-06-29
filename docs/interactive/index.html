@@ -323,7 +323,7 @@
             overflow: hidden;
         }
 
-        /* Slide 1: Preprocessing Visual Aligner */
+        /* Step Preprocessing */
         .prep-card {
             background: rgba(255, 255, 255, 0.02);
             border: 1px solid rgba(255, 255, 255, 0.05);
@@ -368,7 +368,7 @@
             font-size: 0.9rem;
         }
 
-        /* Slide 2: MLM 80/10/10 Masking rules visualizer */
+        /* MLM 80/10/10 Masking */
         .masking-wrapper {
             display: flex;
             gap: 1.5rem;
@@ -492,7 +492,7 @@
             width: 100%;
         }
 
-        /* Matrix Pooling cell nodes */
+        /* Matrix Pooling Cell nodes */
         .matrix-container {
             display: flex;
             align-items: center;
@@ -667,6 +667,69 @@
         .highlight-indigo {
             color: #a5b4fc;
         }
+
+        /* Network SVG Styles */
+        .network-svg-layer {
+            width: 100%;
+            max-width: 600px;
+            height: 250px;
+        }
+
+        /* Custom Word Aligner Aligner badge links */
+        .aligner-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            width: 100%;
+            align-items: center;
+        }
+
+        .interactive-word-grid {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .word-node {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            min-width: 100px;
+        }
+
+        .word-node.active {
+            border-color: var(--secondary);
+            background: rgba(236, 72, 153, 0.1);
+            box-shadow: 0 0 15px rgba(236, 72, 153, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .word-node-label {
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .subword-links {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-top: 0.5rem;
+        }
+
+        .subword-badge {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-muted);
+            font-size: 0.75rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-family: var(--font-monospace);
+        }
     </style>
 </head>
 <body>
@@ -703,13 +766,16 @@
                     <span>07.</span> Layered Vocab Restriction
                 </li>
                 <li class="nav-item" onclick="gotoSlide(7)">
-                    <span>08.</span> Layered Backpropagation
+                    <span>08.</span> Layered Mask Simulator
                 </li>
                 <li class="nav-item" onclick="gotoSlide(8)">
-                    <span>09.</span> Downstream Evaluation
+                    <span>09.</span> Layered Backpropagation
                 </li>
                 <li class="nav-item" onclick="gotoSlide(9)">
-                    <span>10.</span> Recap & Takeaways
+                    <span>10.</span> Downstream Evaluation
+                </li>
+                <li class="nav-item" onclick="gotoSlide(10)">
+                    <span>11.</span> Recap & Takeaways
                 </li>
             </ul>
         </section>
@@ -1053,7 +1119,7 @@
                     <span class="slide-category">Layered Pretraining</span>
                     <h2 class="slide-title">Vocabulary Restriction Mechanics</h2>
                     <p class="slide-desc">
-                        Predicting 1-out-of-30,522 vocabulary tokens represents high prediction entropy. However, grammatical constraints specify that the masked slot in <em>"the [MASK] sat"</em> MUST be a noun. The <strong>Layered POS</strong> architecture predicts POS tags first, then maps the tag to its allowed vocabulary subset, adding log masks to force invalid word logits to negative infinity.
+                        Predicting 1-out-of-30,522 vocabulary tokens represents high prediction entropy. However, grammatical constraints specify that the masked slot in <em>"the (MASK) sat"</em> MUST be a noun. The <strong>Layered POS</strong> architecture predicts POS tags first, then maps the tag to its allowed vocabulary subset, adding log masks to force invalid word logits to negative infinity.
                     </p>
                 </div>
 
@@ -1096,7 +1162,72 @@
                 </div>
             </article>
 
-            <!-- Slide 8: Layered Backpropagation -->
+            <!-- Slide 8: Layered Mask Simulator -->
+            <article class="slide-card">
+                <div class="slide-header">
+                    <span class="slide-category">Interactive Playground</span>
+                    <h2 class="slide-title">Interactive Logits Filtering Simulator</h2>
+                    <p class="slide-desc">
+                        Simulate the forward pass of <code>LayeredPOSMLMBert</code> for the sentence: <em>"the (MASK) sat."</em>
+                        Select different masking modes below to see how they affect the model's vocabulary logits distribution.
+                    </p>
+                </div>
+
+                <div class="lecture-content">
+                    <div class="visual-container">
+                        <div class="logits-playground">
+                            <!-- Left controls -->
+                            <div class="mode-toggle-group">
+                                <button class="mode-toggle-btn active" id="btn-raw" onclick="updatePlaygroundMode('raw')">Raw MLM Logits (Unmasked)</button>
+                                <button class="mode-toggle-btn" id="btn-gold" onclick="updatePlaygroundMode('gold')">Gold Masking (NN only)</button>
+                                <button class="mode-toggle-btn" id="btn-hard" onclick="updatePlaygroundMode('hard')">Hard Masking (NN predicted)</button>
+                                <button class="mode-toggle-btn" id="btn-soft" onclick="updatePlaygroundMode('soft')">Soft Masking (Prob Mixture)</button>
+                            </div>
+
+                            <!-- Right Chart -->
+                            <div class="logits-chart">
+                                <!-- Row 1: cat -->
+                                <div class="logit-row">
+                                    <div class="logit-word">cat (Noun)</div>
+                                    <div class="logit-bar-outer">
+                                        <div class="logit-bar-inner" id="bar-cat"></div>
+                                    </div>
+                                    <div class="logit-val" id="val-cat">0%</div>
+                                </div>
+
+                                <!-- Row 2: dog -->
+                                <div class="logit-row">
+                                    <div class="logit-word">dog (Noun)</div>
+                                    <div class="logit-bar-outer">
+                                        <div class="logit-bar-inner" id="bar-dog"></div>
+                                    </div>
+                                    <div class="logit-val" id="val-dog">0%</div>
+                                </div>
+
+                                <!-- Row 3: sat -->
+                                <div class="logit-row">
+                                    <div class="logit-word">sat (Verb)</div>
+                                    <div class="logit-bar-outer">
+                                        <div class="logit-bar-inner" id="bar-sat"></div>
+                                    </div>
+                                    <div class="logit-val" id="val-sat">0%</div>
+                                </div>
+
+                                <!-- Row 4: happy -->
+                                <div class="logit-row">
+                                    <div class="logit-word">happy (Adj)</div>
+                                    <div class="logit-bar-outer">
+                                        <div class="logit-bar-inner" id="bar-happy"></div>
+                                    </div>
+                                    <div class="logit-val" id="val-happy">0%</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Slide 9: Layered Backpropagation -->
             <article class="slide-card">
                 <div class="slide-header">
                     <span class="slide-category">Gradients & Backprop</span>
@@ -1163,7 +1294,7 @@
                 </div>
             </article>
 
-            <!-- Slide 9: Downstream Evaluation -->
+            <!-- Slide 10: Downstream Evaluation -->
             <article class="slide-card">
                 <div class="slide-header">
                     <span class="slide-category">Evaluation & Benchmarks</span>
@@ -1217,7 +1348,7 @@
                 </div>
             </article>
 
-            <!-- Slide 10: Recap & Takeaways -->
+            <!-- Slide 11: Recap & Takeaways -->
             <article class="slide-card">
                 <div class="slide-header">
                     <span class="slide-category">Key Takeaways</span>
@@ -1251,7 +1382,7 @@
             <!-- Bottom Deck Controls -->
             <div class="controls">
                 <button class="btn" id="prev-btn" onclick="prevSlide()">Previous Step</button>
-                <div class="progress-indicator" id="progress-text">Step 1 of 10</div>
+                <div class="progress-indicator" id="progress-text">Step 1 of 11</div>
                 <button class="btn btn-primary" id="next-btn" onclick="nextSlide()">Next Step</button>
             </div>
 
@@ -1404,7 +1535,7 @@
             document.getElementById('val-total-s').innerText = total.toFixed(2);
         }
 
-        // Slide 6 & 8: Backpropagation Animations
+        // Slide 6 & 9: Backpropagation Animations
         function triggerBackpropAnimation(type) {
             if (type === 'multitask') {
                 animateParticle('p-mlm-0', 580, 55, 320, 55, () => {
@@ -1501,7 +1632,7 @@
             requestAnimationFrame(step);
         }
 
-        // Slide 7: Logits simulation
+        // Slide 8: Logits simulation
         function updatePlaygroundMode(mode) {
             document.querySelectorAll('.mode-toggle-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById(`btn-${mode}`).classList.add('active');
