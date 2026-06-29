@@ -3,21 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BabyLM Multi-Task & Layered BERT Lecture</title>
+    <title>BabyLM Pretraining: Multi-Task & Layered Gradients Lecture</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Plus+Jakarta+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-main: #090d16;
-            --bg-card: rgba(17, 24, 39, 0.6);
+            --bg-main: #060913;
+            --bg-card: rgba(15, 23, 42, 0.7);
             --border-glow: rgba(99, 102, 241, 0.15);
             --primary: #6366f1;
             --primary-glow: rgba(99, 102, 241, 0.4);
             --secondary: #ec4899;
+            --secondary-glow: rgba(236, 72, 153, 0.4);
             --tertiary: #10b981;
+            --tertiary-glow: rgba(16, 185, 129, 0.4);
             --text-main: #f3f4f6;
             --text-muted: #9ca3af;
+            --font-monospace: 'Fira Code', monospace;
         }
 
         * {
@@ -48,7 +51,7 @@
             position: sticky;
             top: 0;
             z-index: 100;
-            background: rgba(9, 13, 22, 0.8);
+            background: rgba(6, 9, 19, 0.85);
         }
 
         .logo {
@@ -73,15 +76,15 @@
         }
 
         main {
-            max-width: 1200px;
+            max-width: 1440px;
             margin: 2rem auto;
             padding: 0 1.5rem;
             display: grid;
-            grid-template-columns: 280px 1fr;
-            gap: 2rem;
+            grid-template-columns: 320px 1fr;
+            gap: 2.5rem;
         }
 
-        /* Navigation Sidebar */
+        /* Sidebar Navigation */
         .sidebar {
             background: var(--bg-card);
             border: 1px solid rgba(255, 255, 255, 0.05);
@@ -96,10 +99,10 @@
             font-family: 'Outfit', sans-serif;
             font-size: 0.9rem;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 1.5px;
             color: var(--text-muted);
             margin-bottom: 1rem;
-            font-weight: 600;
+            font-weight: 700;
         }
 
         .nav-list {
@@ -114,7 +117,7 @@
             border-radius: 8px;
             cursor: pointer;
             transition: all 0.3s ease;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             display: flex;
             align-items: center;
             gap: 0.75rem;
@@ -122,7 +125,7 @@
         }
 
         .nav-item:hover {
-            background: rgba(255, 255, 255, 0.03);
+            background: rgba(255, 255, 255, 0.02);
             color: var(--text-main);
         }
 
@@ -135,17 +138,17 @@
 
         /* Content Deck */
         .lecture-deck {
-            min-height: 600px;
             display: flex;
             flex-direction: column;
             gap: 2rem;
+            min-width: 0;
         }
 
         .slide-card {
             background: var(--bg-card);
             border: 1px solid rgba(255, 255, 255, 0.05);
             border-radius: 20px;
-            padding: 2.5rem;
+            padding: 3rem;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
             backdrop-filter: blur(12px);
             display: none;
@@ -159,7 +162,7 @@
         @keyframes fadeIn {
             from {
                 opacity: 0;
-                transform: translateY(20px);
+                transform: translateY(15px);
             }
             to {
                 opacity: 1;
@@ -168,33 +171,95 @@
         }
 
         .slide-header {
-            margin-bottom: 1.5rem;
+            margin-bottom: 2rem;
         }
 
         .slide-category {
             color: var(--primary);
             font-size: 0.85rem;
-            font-weight: 700;
+            font-weight: 800;
             text-transform: uppercase;
-            letter-spacing: 1.5px;
+            letter-spacing: 2px;
             margin-bottom: 0.5rem;
+            display: inline-block;
         }
 
         .slide-title {
             font-family: 'Outfit', sans-serif;
-            font-size: 2.25rem;
+            font-size: 2.5rem;
             font-weight: 800;
-            letter-spacing: -0.5px;
-            margin-bottom: 0.75rem;
+            letter-spacing: -0.75px;
+            margin-bottom: 1rem;
+            background: linear-gradient(to right, #ffffff, #d1d5db);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
         .slide-desc {
             color: var(--text-muted);
             font-size: 1.1rem;
-            line-height: 1.6;
+            line-height: 1.65;
         }
 
-        /* Lecture Controls */
+        .lecture-content {
+            margin-top: 1.5rem;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin: 1.5rem 0;
+        }
+
+        .info-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .info-card-title {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .info-card-text {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            line-height: 1.55;
+        }
+
+        /* Math formula styling */
+        .math-block {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 8px;
+            padding: 1.25rem;
+            font-family: var(--font-monospace);
+            font-size: 0.95rem;
+            text-align: center;
+            color: #a5b4fc;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+        }
+
+        .math-inline {
+            font-family: var(--font-monospace);
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            color: #e0e7ff;
+        }
+
+        /* Controls styling */
         .controls {
             display: flex;
             justify-content: space-between;
@@ -202,19 +267,23 @@
             background: var(--bg-card);
             border: 1px solid rgba(255, 255, 255, 0.05);
             border-radius: 12px;
-            padding: 1rem 1.5rem;
+            padding: 1.25rem 2rem;
+            margin-top: 1rem;
         }
 
         .btn {
             background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             color: var(--text-main);
-            padding: 0.75rem 1.5rem;
+            padding: 0.75rem 1.75rem;
             border-radius: 8px;
             cursor: pointer;
             font-weight: 600;
             transition: all 0.2s ease;
             font-family: inherit;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
         }
 
         .btn:hover {
@@ -233,18 +302,19 @@
         }
 
         .progress-indicator {
-            font-weight: 500;
+            font-weight: 600;
             color: var(--text-muted);
+            font-size: 0.95rem;
         }
 
-        /* INTERACTIVE VISUALIZATIONS */
+        /* VISUALIZATIONS */
         .visual-container {
             margin-top: 2rem;
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.03);
-            border-radius: 12px;
-            padding: 1.5rem;
-            min-height: 300px;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 16px;
+            padding: 2rem;
+            min-height: 350px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -253,181 +323,293 @@
             overflow: hidden;
         }
 
-        /* Tokenization / Pooling Interactive Widget */
-        .wordpiece-wrapper {
+        /* Slide 1: Preprocessing Visual Aligner */
+        .prep-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+            width: 100%;
+            margin-bottom: 1.5rem;
+        }
+
+        .prep-flow-step {
+            display: flex;
+            align-items: center;
+            gap: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .step-num {
+            background: var(--primary);
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.9rem;
+            flex-shrink: 0;
+        }
+
+        .step-label {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+        }
+
+        .step-data {
+            font-family: var(--font-monospace);
+            background: rgba(0,0,0,0.2);
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            border: 1px solid rgba(255,255,255,0.03);
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        /* Slide 2: MLM 80/10/10 Masking rules visualizer */
+        .masking-wrapper {
             display: flex;
             gap: 1.5rem;
-            align-items: center;
-            margin-bottom: 2rem;
+            width: 100%;
+            justify-content: center;
             flex-wrap: wrap;
         }
 
-        .token-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 8px;
-            padding: 1rem 1.5rem;
+        .masking-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 1.5rem;
+            width: 180px;
             text-align: center;
             cursor: pointer;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
         }
 
-        .token-card::after {
-            content: attr(data-id);
-            position: absolute;
-            bottom: -22px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-        }
-
-        .token-card:hover::after {
-            opacity: 1;
-        }
-
-        .token-card.active {
-            border-color: var(--primary);
-            background: rgba(99, 102, 241, 0.1);
-            box-shadow: 0 0 15px rgba(99, 102, 241, 0.2);
+        .masking-card:hover {
             transform: translateY(-4px);
+            border-color: var(--primary);
         }
 
-        .token-sub {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-            margin-top: 0.25rem;
+        .masking-card.active {
+            background: rgba(99, 102, 241, 0.1);
+            border-color: var(--primary);
+            box-shadow: 0 0 15px var(--primary-glow);
         }
 
-        .vector-box {
-            display: flex;
-            gap: 1rem;
-            align-items: center;
-            margin-top: 1rem;
-            background: rgba(255, 255, 255, 0.02);
-            padding: 1rem;
-            border-radius: 8px;
+        .masking-pct {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.25rem;
+            font-weight: 800;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .masking-card.secondary .masking-pct {
+            color: var(--secondary);
+        }
+
+        .masking-card.secondary:hover {
+            border-color: var(--secondary);
+        }
+
+        .masking-card.secondary.active {
+            background: rgba(236, 72, 153, 0.1);
+            border-color: var(--secondary);
+            box-shadow: 0 0 15px var(--secondary-glow);
+        }
+
+        .masking-card.tertiary .masking-pct {
+            color: var(--tertiary);
+        }
+
+        .masking-card.tertiary:hover {
+            border-color: var(--tertiary);
+        }
+
+        .masking-card.tertiary.active {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: var(--tertiary);
+            box-shadow: 0 0 15px var(--tertiary-glow);
+        }
+
+        /* Attention Simulator */
+        .attention-simulator {
             width: 100%;
-            max-width: 500px;
-            border: 1px dashed rgba(255, 255, 255, 0.05);
-        }
-
-        .vector-bar-group {
             display: flex;
             flex-direction: column;
-            gap: 0.5rem;
+            gap: 1.5rem;
+        }
+
+        .token-row {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
             width: 100%;
         }
 
-        .vector-bar {
-            height: 8px;
-            background: var(--primary);
-            border-radius: 4px;
-            width: 50%;
-            transition: width 0.5s ease;
-        }
-
-        .vector-bar.second {
-            background: var(--secondary);
-            width: 30%;
-        }
-
-        .vector-bar.third {
-            background: var(--tertiary);
-            width: 75%;
-        }
-
-        /* Matrix Overlay Visualization */
-        .matrix-table {
-            display: grid;
-            grid-template-columns: repeat(6, 60px);
-            gap: 6px;
-            margin: 1.5rem 0;
-            background: rgba(255, 255, 255, 0.01);
-            padding: 1rem;
+        .attention-token {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 0.75rem 1.25rem;
             border-radius: 8px;
-        }
-
-        .matrix-cell {
-            width: 60px;
-            height: 40px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 0.85rem;
-            background: rgba(255, 255, 255, 0.02);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 4px;
+            font-family: var(--font-monospace);
+            font-weight: 600;
+            cursor: pointer;
             transition: all 0.3s ease;
         }
 
-        .matrix-cell.highlight {
+        .attention-token.selected {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+            box-shadow: 0 0 15px var(--primary-glow);
+        }
+
+        .attention-token.attending {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: rgba(99, 102, 241, 0.5);
+            color: var(--text-main);
+        }
+
+        .attention-token.causal-blocked {
+            background: rgba(239, 68, 68, 0.05);
+            border-color: rgba(239, 68, 68, 0.2);
+            color: #ef4444;
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .comparison-panel {
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 1rem;
+            font-size: 0.95rem;
+            line-height: 1.5;
+            width: 100%;
+        }
+
+        /* Matrix Pooling cell nodes */
+        .matrix-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            width: 100%;
+            justify-content: center;
+            overflow-x: auto;
+            padding: 1rem 0;
+        }
+
+        .matrix-box-desc {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-align: center;
+            margin-top: 0.5rem;
+            font-weight: 600;
+        }
+
+        .matrix-table-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 55px);
+            gap: 4px;
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 0.75rem;
+            border-radius: 8px;
+        }
+
+        .matrix-cell-node {
+            width: 55px;
+            height: 35px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: var(--font-monospace);
+            font-size: 0.8rem;
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            transition: all 0.25s ease;
+        }
+
+        .matrix-cell-node.highlight {
             background: rgba(16, 185, 129, 0.2);
             border-color: var(--tertiary);
             color: #a7f3d0;
             font-weight: 600;
         }
 
+        /* Loss simulator */
+        .loss-bars-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            width: 100%;
+            max-width: 550px;
+        }
+
+        /* Interactive SVG gradient paths */
+        .backprop-svg {
+            width: 100%;
+            max-width: 700px;
+            height: 320px;
+        }
+
+        .backprop-node {
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .gradient-glow {
+            animation: glow-pulse 2s infinite alternate;
+        }
+
+        @keyframes glow-pulse {
+            from { filter: drop-shadow(0 0 2px rgba(236, 72, 153, 0.4)); }
+            to { filter: drop-shadow(0 0 10px rgba(236, 72, 153, 0.8)); }
+        }
+
+        .grad-particle {
+            fill: var(--secondary);
+            r: 4;
+            opacity: 0;
+        }
+
         /* Playable Logits Simulator */
         .logits-playground {
             width: 100%;
             display: grid;
-            grid-template-columns: 200px 1fr;
+            grid-template-columns: 240px 1fr;
             gap: 2rem;
-            margin-top: 1rem;
-        }
-
-        .mode-toggle-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-
-        .mode-toggle-btn {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            color: var(--text-muted);
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            cursor: pointer;
-            text-align: left;
-            transition: all 0.2s ease;
-            font-weight: 600;
-        }
-
-        .mode-toggle-btn.active {
-            background: rgba(236, 72, 153, 0.1);
-            border-color: var(--secondary);
-            color: white;
-            box-shadow: 0 0 10px rgba(236, 72, 153, 0.15);
         }
 
         .logits-chart {
             display: flex;
             flex-direction: column;
-            gap: 1rem;
+            gap: 1.25rem;
         }
 
         .logit-row {
             display: grid;
-            grid-template-columns: 100px 1fr 60px;
+            grid-template-columns: 120px 1fr 60px;
             align-items: center;
             gap: 1rem;
         }
 
         .logit-word {
-            font-family: monospace;
+            font-family: var(--font-monospace);
             font-size: 0.95rem;
             text-align: right;
+            font-weight: 600;
         }
 
         .logit-bar-outer {
-            height: 24px;
+            height: 26px;
             background: rgba(255, 255, 255, 0.02);
-            border-radius: 4px;
+            border-radius: 6px;
             border: 1px solid rgba(255, 255, 255, 0.05);
             overflow: hidden;
             position: relative;
@@ -437,69 +619,60 @@
             height: 100%;
             background: linear-gradient(to right, var(--primary), var(--secondary));
             width: 0%;
-            transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: width 0.5s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .logit-val {
-            font-size: 0.85rem;
-            font-family: monospace;
+            font-size: 0.9rem;
+            font-family: var(--font-monospace);
+            font-weight: 500;
         }
 
-        .pos-indicator-box {
+        /* Downstream Evaluation stats */
+        .score-board {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .score-card {
             background: rgba(255, 255, 255, 0.02);
             border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            padding: 1rem;
-            margin-top: 1.5rem;
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .score-row {
             display: flex;
-            align-items: center;
-            gap: 1.5rem;
-            width: 100%;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            padding: 0.75rem 0;
+            font-size: 0.95rem;
         }
 
-        .pos-indicator-tag {
-            font-family: monospace;
-            font-weight: 700;
-            background: var(--tertiary);
-            color: #064e3b;
-            padding: 0.25rem 0.75rem;
-            border-radius: 4px;
-            transition: all 0.3s ease;
+        .score-row:last-child {
+            border-bottom: none;
         }
 
-        /* SVG Network Architecture */
-        .svg-architecture {
-            width: 100%;
-            max-width: 600px;
-            height: 280px;
+        .score-val {
+            font-family: var(--font-monospace);
+            font-weight: 600;
         }
 
-        .node-circle {
-            transition: all 0.3s ease;
-            cursor: pointer;
+        .highlight-emerald {
+            color: var(--tertiary);
         }
 
-        .node-circle:hover {
-            fill: var(--primary) !important;
-            r: 10 !important;
-        }
-
-        .pulse-line {
-            stroke-dasharray: 8;
-            animation: dash 5s linear infinite;
-        }
-
-        @keyframes dash {
-            to {
-                stroke-dashoffset: -80;
-            }
+        .highlight-indigo {
+            color: #a5b4fc;
         }
     </style>
 </head>
 <body>
 
     <header>
-        <div class="logo">BABYLM LECTURE SUITE</div>
+        <div class="logo">BABYLM MULTI-TASK & GRADIENT LECTURE</div>
         <div class="badge">Strict-Small Track 2026</div>
     </header>
 
@@ -509,22 +682,34 @@
             <h3 class="sidebar-title">Lecture Syllabus</h3>
             <ul class="nav-list">
                 <li class="nav-item active" onclick="gotoSlide(0)">
-                    <span>01.</span> The Challenge Goal
+                    <span>01.</span> Data & Preprocessing
                 </li>
                 <li class="nav-item" onclick="gotoSlide(1)">
-                    <span>02.</span> Token Subword Puzzle
+                    <span>02.</span> MLM Masking (80/10/10)
                 </li>
                 <li class="nav-item" onclick="gotoSlide(2)">
-                    <span>03.</span> Average Pooling Matrix
+                    <span>03.</span> Bidirectional Attention
                 </li>
                 <li class="nav-item" onclick="gotoSlide(3)">
-                    <span>04.</span> Multi-Task Branching
+                    <span>04.</span> Average Pooling Layer
                 </li>
                 <li class="nav-item" onclick="gotoSlide(4)">
-                    <span>05.</span> Vocab Reduction Aim
+                    <span>05.</span> Multi-Task Losses
                 </li>
                 <li class="nav-item" onclick="gotoSlide(5)">
-                    <span>06.</span> Layered Mask Simulator
+                    <span>06.</span> Multi-Task Backpropagation
+                </li>
+                <li class="nav-item" onclick="gotoSlide(6)">
+                    <span>07.</span> Layered Vocab Restriction
+                </li>
+                <li class="nav-item" onclick="gotoSlide(7)">
+                    <span>08.</span> Layered Backpropagation
+                </li>
+                <li class="nav-item" onclick="gotoSlide(8)">
+                    <span>09.</span> Downstream Evaluation
+                </li>
+                <li class="nav-item" onclick="gotoSlide(9)">
+                    <span>10.</span> Recap & Takeaways
                 </li>
             </ul>
         </section>
@@ -532,300 +717,533 @@
         <!-- Slide Deck Content -->
         <section class="lecture-deck">
             
-            <!-- Slide 1: Welcome -->
+            <!-- Slide 1: Data & Preprocessing -->
             <article class="slide-card active">
                 <div class="slide-header">
-                    <span class="slide-category">Introduction</span>
-                    <h2 class="slide-title">Learning Language from 10M Tokens</h2>
+                    <span class="slide-category">Phase 1: Preprocessing</span>
+                    <h2 class="slide-title">Data Ingestion, Tokenization & POS Tagging</h2>
                     <p class="slide-desc">
-                        A typical human child hears roughly 10 million words by age 2. However, large language models (LLMs) like GPT-4 are pretrained on trillions of tokens. The <strong>BabyLM Challenge</strong> asks: <em>How can we build syntactically and semantically rich language representations with strict small-scale limitations?</em> Our approach integrates syntactic constraints directly into the pretraining lifecycle.
+                        Before training begins, raw corpora splits must be aligned into a structured format. We run NLTK tokenizers to find word boundaries, assign word-level POS tags (using Penn Treebank tags), tokenize via the BERT WordPiece tokenizer, and cache the datasets locally as HuggingFace Arrow tables.
                     </p>
                 </div>
                 
-                <div class="visual-container">
-                    <svg class="svg-architecture" viewBox="0 0 600 240">
-                        <!-- Network Nodes -->
-                        <g id="input-nodes">
-                            <circle class="node-circle" cx="100" cy="50" r="7" fill="#6366f1" />
-                            <circle class="node-circle" cx="100" cy="110" r="7" fill="#6366f1" />
-                            <circle class="node-circle" cx="100" cy="170" r="7" fill="#6366f1" />
-                            <text x="50" y="115" fill="#9ca3af" font-size="11">Input Sequence</text>
-                        </g>
+                <div class="lecture-content">
+                    <div class="prep-card">
+                        <div class="prep-flow-step">
+                            <div class="step-num">1</div>
+                            <div class="step-label"><strong>Raw sentence input:</strong></div>
+                        </div>
+                        <div class="step-data">"the cats sat on the mat."</div>
+                    </div>
 
-                        <g id="hidden-nodes">
-                            <circle class="node-circle" cx="300" cy="50" r="7" fill="#a5b4fc" />
-                            <circle class="node-circle" cx="300" cy="110" r="7" fill="#a5b4fc" />
-                            <circle class="node-circle" cx="300" cy="170" r="7" fill="#a5b4fc" />
-                            <text x="270" y="210" fill="#9ca3af" font-size="12">Shared Base Encoder</text>
-                        </g>
+                    <div class="prep-card">
+                        <div class="prep-flow-step">
+                            <div class="step-num">2</div>
+                            <div class="step-label"><strong>NLTK POS Tagging (word boundaries):</strong></div>
+                        </div>
+                        <div class="step-data">"the" -> DT, &nbsp; "cats" -> NNS, &nbsp; "sat" -> VBD, &nbsp; "on" -> IN, &nbsp; "the" -> DT, &nbsp; "mat" -> NN, &nbsp; "." -> .</div>
+                    </div>
 
-                        <!-- Outputs -->
-                        <g id="output-nodes">
-                            <circle class="node-circle" cx="500" cy="50" r="8" fill="#10b981" />
-                            <circle class="node-circle" cx="500" cy="110" r="8" fill="#ec4899" />
-                            <circle class="node-circle" cx="500" cy="170" r="8" fill="#3b82f6" />
-                            <text x="520" y="55" fill="#f3f4f6" font-size="11">Semantics (MLM)</text>
-                            <text x="520" y="115" fill="#f3f4f6" font-size="11">Syntax (POS)</text>
-                            <text x="520" y="175" fill="#f3f4f6" font-size="11">Context (NSP)</text>
-                        </g>
-
-                        <!-- Connections -->
-                        <path class="pulse-line" d="M 100 110 L 300 110" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
-                        <path class="pulse-line" d="M 100 50 L 300 50" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
-                        <path class="pulse-line" d="M 100 170 L 300 170" stroke="rgba(255,255,255,0.15)" stroke-width="2" />
-                        
-                        <line x1="300" y1="110" x2="500" y2="50" stroke="rgba(255,255,255,0.1)" stroke-width="1.5" />
-                        <line x1="300" y1="110" x2="500" y2="110" stroke="rgba(255,255,255,0.1)" stroke-width="1.5" />
-                        <line x1="300" y1="110" x2="500" y2="170" stroke="rgba(255,255,255,0.1)" stroke-width="1.5" />
-                    </svg>
+                    <div class="prep-card">
+                        <div class="prep-flow-step">
+                            <div class="step-num">3</div>
+                            <div class="step-label"><strong>WordPiece Tokenization (subword alignments):</strong></div>
+                        </div>
+                        <div class="step-data">tokens: ["the", "cat", "##s", "sat", "on", "the", "mat", "."]</div>
+                    </div>
                 </div>
             </article>
 
-            <!-- Slide 2: Token Puzzle -->
+            <!-- Slide 2: MLM Masking (80/10/10) -->
             <article class="slide-card">
                 <div class="slide-header">
-                    <span class="slide-category">Subword Alignment</span>
-                    <h2 class="slide-title">The Token-to-POS Alignment Puzzle</h2>
+                    <span class="slide-category">Phase 2: Masking Strategy</span>
+                    <h2 class="slide-title">Pretraining Masking Rules: 80% / 10% / 10%</h2>
                     <p class="slide-desc">
-                        NLTK tags Part-of-Speech labels at the word level (e.g. <code>"cats"</code> -> <code>NNS</code>). However, BERT uses a WordPiece subword tokenizer (e.g. <code>"cats"</code> -> <code>"cat"</code> + <code>"##s"</code>). This mismatch creates a structural discrepancy. Click the cards below to see how subword tokens relate to their parent word representations.
+                        During pretraining collations, we apply dynamic masking to the input tokens. Specifically, <strong>15% of the WordPiece tokens</strong> are selected for MLM target calculations. For each selected token, the collator applies the standard 80/10/10 rule:
                     </p>
                 </div>
 
-                <div class="visual-container">
-                    <div class="wordpiece-wrapper">
-                        <div class="token-card active" data-id="Word 0: the (DT)" onclick="selectToken(this, 0.9, 0.1, 0.05)">
-                            the
-                            <div class="token-sub">subword 0</div>
+                <div class="lecture-content">
+                    <div class="masking-wrapper">
+                        <div class="masking-card active" id="mask-card-80" onclick="selectMaskingInfo(80, 'Replaced with [MASK] token', 'Forces the encoder to learn semantic reconstruction embeddings on the masked index.')">
+                            <div class="masking-pct">80%</div>
+                            <div style="font-weight: 700; margin-bottom: 0.5rem;">[MASK] Token</div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">Replace with masked token</div>
                         </div>
-                        <div class="token-card" data-id="Word 1: cats (NNS)" onclick="selectToken(this, 0.1, 0.85, 0.05)">
-                            cat
-                            <div class="token-sub">subword 1</div>
+                        <div class="masking-card secondary" id="mask-card-10-rand" onclick="selectMaskingInfo(10, 'Replaced with Random Word', 'Keeps the encoder bidirectionally active at all times, preventing it from overfitting to [MASK] contexts.')">
+                            <div class="masking-pct">10%</div>
+                            <div style="font-weight: 700; margin-bottom: 0.5rem;">Random Token</div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">Replace with random vocab token</div>
                         </div>
-                        <div class="token-card" data-id="Word 1: cats (NNS)" onclick="selectToken(this, 0.1, 0.85, 0.05)">
-                            ##s
-                            <div class="token-sub">subword 2</div>
-                        </div>
-                        <div class="token-card" data-id="Word 2: jumped (VBD)" onclick="selectToken(this, 0.05, 0.05, 0.9)">
-                            jump
-                            <div class="token-sub">subword 3</div>
-                        </div>
-                        <div class="token-card" data-id="Word 2: jumped (VBD)" onclick="selectToken(this, 0.05, 0.05, 0.9)">
-                            ##ed
-                            <div class="token-sub">subword 4</div>
+                        <div class="masking-card tertiary" id="mask-card-10-keep" onclick="selectMaskingInfo(10, 'Kept Unchanged', 'Maintains alignment and representations for unchanged target words, forcing parameter stability.')">
+                            <div class="masking-pct">10%</div>
+                            <div style="font-weight: 700; margin-bottom: 0.5rem;">Unchanged</div>
+                            <div style="font-size: 0.85rem; color: var(--text-muted);">Keep the original token word</div>
                         </div>
                     </div>
 
-                    <div class="vector-box">
-                        <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-muted); width: 140px;">Active Representation:</span>
-                        <div class="vector-bar-group">
-                            <div class="vector-bar" id="bar1"></div>
-                            <div class="vector-bar second" id="bar2"></div>
-                            <div class="vector-bar third" id="bar3"></div>
-                        </div>
-                    </div>
-                    
-                    <div class="pos-indicator-box">
-                        <span>Aligned Parent Word Target:</span>
-                        <span class="pos-indicator-tag" id="parent-word-info">Word 0: the (DT)</span>
+                    <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 1.5rem; margin-top: 2rem;">
+                        <h4 style="font-family: 'Outfit', sans-serif; margin-bottom: 0.5rem;" id="mask-info-title">80% Replaced with [MASK] token</h4>
+                        <p id="mask-info-desc" style="font-size: 0.95rem; color: var(--text-muted);">
+                            Forces the encoder to learn semantic reconstruction embeddings on the masked index.
+                        </p>
                     </div>
                 </div>
             </article>
 
-            <!-- Slide 3: Average Pooling -->
+            <!-- Slide 3: Bidirectional Attention -->
+            <article class="slide-card">
+                <div class="slide-header">
+                    <span class="slide-category">BERT & Encoder-Only architectures</span>
+                    <h2 class="slide-title">Bidirectional Attention vs. Causal Blockers</h2>
+                    <p class="slide-desc">
+                        Unlike decoder-only models (like GPT) which use causal masking to restrict tokens to only attend to the left, <strong>BERT is an encoder-only model</strong>. It uses bidirectional self-attention, allowing every token to attend to context on both the left and right. Click on a token below to visualize how the attention layer aggregates surrounding contexts.
+                    </p>
+                </div>
+                
+                <div class="lecture-content">
+                    <div class="visual-container">
+                        <div class="attention-simulator">
+                            <!-- Toggle Architecture -->
+                            <div style="display: flex; gap: 1rem; justify-content: center; margin-bottom: 1rem;">
+                                <button class="btn btn-primary" id="att-bidirectional-btn" onclick="toggleAttentionMode('bidirectional')">BERT (Bidirectional Attention)</button>
+                                <button class="btn" id="att-causal-btn" onclick="toggleAttentionMode('causal')">GPT (Causal Left-to-Right)</button>
+                            </div>
+
+                            <!-- Tokens Row -->
+                            <div class="token-row">
+                                <div class="attention-token" id="att-t0" onclick="clickAttToken(0)">the</div>
+                                <div class="attention-token" id="att-t1" onclick="clickAttToken(1)">cat</div>
+                                <div class="attention-token selected" id="att-t2" onclick="clickAttToken(2)">sat</div>
+                                <div class="attention-token" id="att-t3" onclick="clickAttToken(3)">on</div>
+                                <div class="attention-token" id="att-t4" onclick="clickAttToken(4)">mat</div>
+                            </div>
+
+                            <!-- Math Block -->
+                            <div class="math-block">
+                                Attention(Q, K, V) = softmax( (Q * K^T) / sqrt(d_k) ) * V
+                            </div>
+
+                            <div class="comparison-panel" id="att-explanation">
+                                <strong>BERT bidirectional context:</strong> The active token <code>"sat"</code> queries all tokens in the sequence simultaneously (left and right), enabling the encoder to represent the full context surrounding the word.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Slide 4: Average Pooling Layer -->
             <article class="slide-card">
                 <div class="slide-header">
                     <span class="slide-category">Mathematical Modeling</span>
-                    <h2 class="slide-title">The Subword Average Pooling Matrix</h2>
+                    <h2 class="slide-title">Subword-level Average Pooling Layer</h2>
                     <p class="slide-desc">
-                        To resolve the subword-word mismatch, we compile a sparse-dense coefficient matrix <strong>P</strong>. During the model's forward pass, we perform a batched matrix multiplication of <strong>P</strong> with the sequence states <strong>H</strong>. Hover over rows below to see how matrix multiplication combines subword embeddings.
+                        To resolve the subword-word mismatch, we compile a sparse pooling matrix <span class="math-inline">P</span> of shape <span class="math-inline">[MaxWords, SeqLen]</span>. Multiplying <span class="math-inline">P</span> with the subword representations averages the hidden states into word-level vectors. Hover over rows below to trace how subwords are mathematically pooled.
                     </p>
                 </div>
 
-                <div class="visual-container">
-                    <div style="display: flex; gap: 2rem; align-items: center; width: 100%; justify-content: space-around;">
-                        
-                        <!-- Left Matrix -->
-                        <div>
-                            <h4 style="margin-bottom: 0.5rem; text-align: center; color: var(--text-muted)">Matrix P (Coefficients)</h4>
-                            <div class="matrix-table" id="pooling-matrix">
-                                <!-- Row 0 -->
-                                <div class="matrix-cell highlight" onmouseover="highlightRow(0)">1.0</div>
-                                <div class="matrix-cell highlight" onmouseover="highlightRow(0)">0.0</div>
-                                <div class="matrix-cell highlight" onmouseover="highlightRow(0)">0.0</div>
-                                <div class="matrix-cell highlight" onmouseover="highlightRow(0)">0.0</div>
-                                <div class="matrix-cell highlight" onmouseover="highlightRow(0)">0.0</div>
-                                <div class="matrix-cell highlight" style="background: rgba(255,255,255,0.05); cursor: default;">Word 0</div>
-                                <!-- Row 1 -->
-                                <div class="matrix-cell" onmouseover="highlightRow(1)">0.0</div>
-                                <div class="matrix-cell" onmouseover="highlightRow(1)">0.5</div>
-                                <div class="matrix-cell" onmouseover="highlightRow(1)">0.5</div>
-                                <div class="matrix-cell" onmouseover="highlightRow(1)">0.0</div>
-                                <div class="matrix-cell" onmouseover="highlightRow(1)">0.0</div>
-                                <div class="matrix-cell" style="background: rgba(255,255,255,0.05); cursor: default;">Word 1</div>
-                                <!-- Row 2 -->
-                                <div class="matrix-cell" onmouseover="highlightRow(2)">0.0</div>
-                                <div class="matrix-cell" onmouseover="highlightRow(2)">0.0</div>
-                                <div class="matrix-cell" onmouseover="highlightRow(2)">0.0</div>
-                                <div class="matrix-cell" onmouseover="highlightRow(2)">0.5</div>
-                                <div class="matrix-cell" onmouseover="highlightRow(2)">0.5</div>
-                                <div class="matrix-cell" style="background: rgba(255,255,255,0.05); cursor: default;">Word 2</div>
+                <div class="lecture-content">
+                    <div class="math-block">
+                        PooledWordStates = P * SequenceHiddenStates &nbsp; | &nbsp; [MaxWords, H] = [MaxWords, SeqLen] x [SeqLen, H]
+                    </div>
+
+                    <div class="visual-container">
+                        <div class="matrix-container">
+                            <!-- Matrix coefficients -->
+                            <div>
+                                <div class="matrix-table-grid">
+                                    <!-- Row 0 -->
+                                    <div class="matrix-cell-node highlight" onmouseover="matrixHover(0)">1.0</div>
+                                    <div class="matrix-cell-node highlight" onmouseover="matrixHover(0)">0.0</div>
+                                    <div class="matrix-cell-node highlight" onmouseover="matrixHover(0)">0.0</div>
+                                    <div class="matrix-cell-node highlight" onmouseover="matrixHover(0)">0.0</div>
+                                    <div class="matrix-cell-node highlight" onmouseover="matrixHover(0)">0.0</div>
+                                    
+                                    <!-- Row 1 -->
+                                    <div class="matrix-cell-node" onmouseover="matrixHover(1)">0.0</div>
+                                    <div class="matrix-cell-node" onmouseover="matrixHover(1)">0.5</div>
+                                    <div class="matrix-cell-node" onmouseover="matrixHover(1)">0.5</div>
+                                    <div class="matrix-cell-node" onmouseover="matrixHover(1)">0.0</div>
+                                    <div class="matrix-cell-node" onmouseover="matrixHover(1)">0.0</div>
+                                    
+                                    <!-- Row 2 -->
+                                    <div class="matrix-cell-node" onmouseover="matrixHover(2)">0.0</div>
+                                    <div class="matrix-cell-node" onmouseover="matrixHover(2)">0.0</div>
+                                    <div class="matrix-cell-node" onmouseover="matrixHover(2)">0.0</div>
+                                    <div class="matrix-cell-node" onmouseover="matrixHover(2)">0.5</div>
+                                    <div class="matrix-cell-node" onmouseover="matrixHover(2)">0.5</div>
+                                </div>
+                                <div class="matrix-box-desc">Pooling Matrix P</div>
+                            </div>
+                            
+                            <span style="font-weight: 700; font-size: 1.5rem; color: var(--text-muted);">×</span>
+
+                            <!-- Token states representation -->
+                            <div>
+                                <div style="display: flex; flex-direction: column; gap: 4px;">
+                                    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 0.5rem 1rem; font-family: var(--font-monospace); font-size: 0.8rem; border-radius: 4px; text-align: center; width: 100px;">H[0] (the)</div>
+                                    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 0.5rem 1rem; font-family: var(--font-monospace); font-size: 0.8rem; border-radius: 4px; text-align: center; width: 100px;">H[1] (cat)</div>
+                                    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 0.5rem 1rem; font-family: var(--font-monospace); font-size: 0.8rem; border-radius: 4px; text-align: center; width: 100px;">H[2] (##s)</div>
+                                    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 0.5rem 1rem; font-family: var(--font-monospace); font-size: 0.8rem; border-radius: 4px; text-align: center; width: 100px;">H[3] (jump)</div>
+                                    <div style="background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); padding: 0.5rem 1rem; font-family: var(--font-monospace); font-size: 0.8rem; border-radius: 4px; text-align: center; width: 100px;">H[4] (##ed)</div>
+                                </div>
+                                <div class="matrix-box-desc">Sequence states H</div>
                             </div>
                         </div>
 
-                        <!-- Right Vector states representation -->
-                        <div style="background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 1.5rem; width: 300px;">
-                            <h4 style="margin-bottom: 0.75rem; text-align: center;">Pooling Math Output</h4>
-                            <p style="font-family: monospace; font-size: 0.9rem;" id="pooling-math-text">
-                                Word_0 State = <br/>1.0 * H_seq[0]
+                        <div style="width: 100%; max-width: 500px; background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.05); border-radius: 8px; padding: 1.25rem; margin-top: 1rem; text-align: left;">
+                            <h4 style="margin-bottom: 0.5rem; font-family: 'Outfit', sans-serif;">Averaging Math Output</h4>
+                            <p style="font-family: var(--font-monospace); font-size: 0.9rem;" id="pooling-math-text">
+                                Word_0 State = 1.0 * H[0]
                             </p>
                         </div>
                     </div>
                 </div>
             </article>
 
-            <!-- Slide 4: Multi-Task branching -->
+            <!-- Slide 5: Multi-Task Losses -->
             <article class="slide-card">
                 <div class="slide-header">
-                    <span class="slide-category">Pretraining Architecture</span>
-                    <h2 class="slide-title">Multi-Task Loss Orchestration</h2>
+                    <span class="slide-category">Pretraining Optimization</span>
+                    <h2 class="slide-title">Multi-Task Cross Entropy Loss Calculations</h2>
                     <p class="slide-desc">
-                        Under our parallel setup, the model weights are optimized via a unified combined loss function: 
-                        <br/>
-                        <code style="background: rgba(0,0,0,0.3); padding: 0.2rem 0.5rem; border-radius: 4px; display: inline-block; margin-top: 0.5rem;">Total Loss = L_MLM + L_NSP + α * L_POS</code>
-                        <br/><br/>
-                        During backpropagation, the gradients of the POS classifier propagate through the pooling matrix back to the base BERT encoder layers, adjusting representations to align simultaneously with semantics (MLM) and syntactic tag distributions.
+                        Our model optimizes parameters over multiple pretraining tasks. In standard Multi-Task pretraining, the total loss aggregates semantic cross-entropy, sentence contiguous classifications, and syntactic POS tagging losses:
                     </p>
                 </div>
 
-                <div class="visual-container">
-                    <div style="width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 1rem;">
-                        <h4 style="text-align: center; margin-bottom: 0.5rem;">Loss Contribution Simulator</h4>
-                        
-                        <div>
-                            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem;">
-                                <span>Semantics Loss (L_MLM)</span>
-                                <span id="val-mlm">Loss: 2.10</span>
-                            </div>
-                            <input type="range" min="0" max="400" value="210" style="width: 100%" oninput="updateLosses()">
+                <div class="lecture-content">
+                    <div class="math-block">
+                        Total Loss = L_MLM + L_NSP + alpha * L_POS
+                    </div>
+                    
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <h5 class="info-card-title">1. Masked Language Modeling Loss</h5>
+                            <p class="info-card-text" style="font-family: var(--font-monospace); font-size: 0.85rem; margin-top: 0.25rem; color:#a5b4fc;">
+                                L_MLM = -1/N * sum( log P(x_i | context) )
+                            </p>
+                            <p class="info-card-text" style="margin-top: 0.5rem;">
+                                Computes cross-entropy on masked subwords. Restores hidden tokens.
+                            </p>
                         </div>
-
-                        <div>
-                            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem;">
-                                <span>Syntax Loss (L_POS)</span>
-                                <span id="val-pos">Loss: 0.80</span>
-                            </div>
-                            <input type="range" min="0" max="200" value="80" style="width: 100%" oninput="updateLosses()">
+                        <div class="info-card">
+                            <h5 class="info-card-title">2. Next Sentence Prediction Loss</h5>
+                            <p class="info-card-text" style="font-family: var(--font-monospace); font-size: 0.85rem; margin-top: 0.25rem; color:#a5b4fc;">
+                                L_NSP = -[y*log(p) + (1-y)*log(1-p)]
+                            </p>
+                            <p class="info-card-text" style="margin-top: 0.5rem;">
+                                Binary classification checking context continuity between sentence pairs.
+                            </p>
                         </div>
+                    </div>
 
-                        <div>
-                            <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem;">
-                                <span>Syntax scaling factor (α)</span>
-                                <span id="val-alpha">Weight: 1.0</span>
+                    <div class="visual-container">
+                        <div class="loss-bars-layout">
+                            <h4 style="text-align: center; margin-bottom: 0.5rem; font-family: 'Outfit', sans-serif;">Gradients Balancing Simulator</h4>
+                            
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem;">
+                                    <span>Masked LM Loss (L_MLM)</span>
+                                    <span id="val-mlm-s">Loss: 2.10</span>
+                                </div>
+                                <input type="range" min="0" max="400" value="210" style="width: 100%" oninput="updateLossesS()">
                             </div>
-                            <input type="range" min="0" max="200" value="100" style="width: 100%" oninput="updateLosses()">
-                        </div>
 
-                        <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; margin-top: 0.5rem; display: flex; justify-content: space-between; font-weight: 700; font-size: 1.15rem;">
-                            <span>Combined Network Loss:</span>
-                            <span id="val-total" style="color: var(--secondary);">2.90</span>
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem;">
+                                    <span>Part-of-Speech Loss (L_POS)</span>
+                                    <span id="val-pos-s">Loss: 0.80</span>
+                                </div>
+                                <input type="range" min="0" max="200" value="80" style="width: 100%" oninput="updateLossesS()">
+                            </div>
+
+                            <div>
+                                <div style="display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 0.25rem;">
+                                    <span>Syntax loss weight (alpha)</span>
+                                    <span id="val-alpha-s">Weight: 1.0</span>
+                                </div>
+                                <input type="range" min="0" max="200" value="100" style="width: 100%" oninput="updateLossesS()">
+                            </div>
+
+                            <div style="border-top: 1px solid rgba(255,255,255,0.06); padding-top: 1rem; display: flex; justify-content: space-between; font-weight: 700; font-size: 1.15rem;">
+                                <span>Aggregate Network Loss:</span>
+                                <span id="val-total-s" style="color: var(--secondary);">2.90</span>
+                            </div>
                         </div>
                     </div>
                 </div>
             </article>
 
-            <!-- Slide 5: Layered Vocab Restriction -->
+            <!-- Slide 6: Multi-Task Backpropagation -->
+            <article class="slide-card">
+                <div class="slide-header">
+                    <span class="slide-category">Gradients & Backprop</span>
+                    <h2 class="slide-title">MultiTaskBERT Gradients Flow</h2>
+                    <p class="slide-desc">
+                        During the backward pass of <code>MultiTaskBERT</code>, gradients from the three independent tasks converge. Gradients from the POS loss propagate backward through the pooling layers. Using the chain rule: 
+                        <br/>
+                        <code class="math-inline">dL / dH_seq = P^T * dL / dH_word</code>
+                        <br/><br/>
+                        Thus, the transpose of the pooling matrix $P^T$ acts as a gradient distributor, sharing the word-level syntactic error signals back to each of its constituent subwords. Click "Trigger Backpropagation" below to watch the gradient flow animated.
+                    </p>
+                </div>
+
+                <div class="lecture-content">
+                    <div style="text-align: center; margin-bottom: 1rem;">
+                        <button class="btn btn-primary" style="margin: 0 auto;" onclick="triggerBackpropAnimation('multitask')">Trigger Backpropagation</button>
+                    </div>
+
+                    <div class="visual-container">
+                        <svg class="backprop-svg" viewBox="0 0 700 320">
+                            <!-- Network nodes -->
+                            <rect class="backprop-node" x="40" y="130" width="100" height="60" rx="8" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.1)" />
+                            <text x="90" y="165" fill="white" font-size="11" text-anchor="middle">Base BERT</text>
+
+                            <!-- Heads -->
+                            <rect class="backprop-node" x="220" y="30" width="100" height="50" rx="8" fill="rgba(99, 102, 241, 0.05)" stroke="var(--primary)" />
+                            <text x="270" y="60" fill="white" font-size="10" text-anchor="middle">MLM Head</text>
+
+                            <rect class="backprop-node" x="220" y="135" width="100" height="50" rx="8" fill="rgba(236, 72, 153, 0.05)" stroke="var(--secondary)" />
+                            <text x="270" y="165" fill="white" font-size="10" text-anchor="middle">NSP Head</text>
+
+                            <rect class="backprop-node" x="220" y="240" width="100" height="50" rx="8" fill="rgba(16, 185, 129, 0.05)" stroke="var(--tertiary)" />
+                            <text x="270" y="265" fill="white" font-size="10" text-anchor="middle">Pooling Layer</text>
+
+                            <rect class="backprop-node" x="380" y="240" width="100" height="50" rx="8" fill="rgba(16, 185, 129, 0.05)" stroke="var(--tertiary)" />
+                            <text x="430" y="270" fill="white" font-size="10" text-anchor="middle">POS Classifier</text>
+
+                            <!-- Losses -->
+                            <circle cx="580" cy="55" r="22" fill="#311b92" stroke="#6366f1" />
+                            <text x="580" y="59" fill="white" font-size="10" text-anchor="middle">L_MLM</text>
+
+                            <circle cx="580" cy="160" r="22" fill="#880e4f" stroke="#ec4899" />
+                            <text x="580" y="164" fill="white" font-size="10" text-anchor="middle">L_NSP</text>
+
+                            <circle cx="580" cy="265" r="22" fill="#1b5e20" stroke="#10b981" />
+                            <text x="580" y="269" fill="white" font-size="10" text-anchor="middle">L_POS</text>
+
+                            <!-- Connections -->
+                            <line x1="140" y1="160" x2="220" y2="55" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <line x1="140" y1="160" x2="220" y2="160" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <line x1="140" y1="160" x2="220" y2="265" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <line x1="320" y1="265" x2="380" y2="265" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <line x1="480" y1="265" x2="558" y2="265" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <line x1="320" y1="55" x2="558" y2="55" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <line x1="320" y1="160" x2="558" y2="160" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+
+                            <!-- Animated Particles -->
+                            <circle class="grad-particle" id="p-mlm-0" cx="558" cy="55" />
+                            <circle class="grad-particle" id="p-mlm-1" cx="220" cy="55" />
+
+                            <circle class="grad-particle" id="p-nsp-0" cx="558" cy="160" />
+                            <circle class="grad-particle" id="p-nsp-1" cx="220" cy="160" />
+
+                            <circle class="grad-particle" id="p-pos-0" cx="558" cy="265" />
+                            <circle class="grad-particle" id="p-pos-1" cx="380" cy="265" />
+                            <circle class="grad-particle" id="p-pos-2" cx="220" cy="265" />
+                        </svg>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Slide 7: Layered Vocab Restriction -->
             <article class="slide-card">
                 <div class="slide-header">
                     <span class="slide-category">Layered Pretraining</span>
-                    <h2 class="slide-title">The Layered POS Vocabulary Filtering</h2>
+                    <h2 class="slide-title">Vocabulary Restriction Mechanics</h2>
                     <p class="slide-desc">
-                        Predicting 1-out-of-30,522 tokens is challenging for small scale models. However, grammar tells us that a masked slot has a single valid POS category. The **Layered POS** architecture first predicts POS tags at the token level, then retrieves an allowed vocabulary subset (e.g. noun words only) and overlays it onto the MLM softmax layer to reduce entropy.
+                        Predicting 1-out-of-30,522 vocabulary tokens represents high prediction entropy. However, grammatical constraints specify that the masked slot in <em>"the [MASK] sat"</em> MUST be a noun. The <strong>Layered POS</strong> architecture predicts POS tags first, then maps the tag to its allowed vocabulary subset, adding log masks to force invalid word logits to negative infinity.
                     </p>
                 </div>
 
-                <div class="visual-container">
-                    <div style="width: 100%; max-width: 600px; padding: 1.5rem; background: rgba(255,255,255,0.02); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
-                        <h4 style="margin-bottom: 1rem; text-align: center;">How the Layered Constraints Reshape Logits</h4>
-                        <ul style="list-style: none; display: flex; flex-direction: column; gap: 0.75rem; font-size: 0.95rem;">
-                            <li style="display: flex; gap: 1rem; align-items: start;">
-                                <span style="background: var(--primary); width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink:0;"></span>
-                                <span><strong>Narrowed search space:</strong> Filters out verbs, prepositions, or adjectives when predicting a noun slot.</span>
-                            </li>
-                            <li style="display: flex; gap: 1rem; align-items: start;">
-                                <span style="background: var(--secondary); width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink:0;"></span>
-                                <span><strong>Differentiable transitions (Soft Masking):</strong> Computes weighted combinations based on predictions to allow training backpropagation.</span>
-                            </li>
-                            <li style="display: flex; gap: 1rem; align-items: start;">
-                                <span style="background: var(--tertiary); width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink:0;"></span>
-                                <span><strong>Syntactic constraints overlay:</strong> raw MLM logits are shifted by adding log(mask + epsilon).</span>
-                            </li>
-                        </ul>
+                <div class="lecture-content">
+                    <div class="math-block">
+                        MaskedLogits = RawLogits + log( vocab_mask + epsilon )
+                    </div>
+
+                    <div class="visual-container">
+                        <svg class="network-svg-layer" viewBox="0 0 600 240">
+                            <!-- Base layers -->
+                            <rect x="50" y="90" width="100" height="50" rx="6" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.1)" />
+                            <text x="100" y="120" fill="white" font-size="11" text-anchor="middle">Encoder States</text>
+                            
+                            <!-- Branch MLM -->
+                            <rect x="230" y="30" width="120" height="40" rx="6" fill="rgba(99, 102, 241, 0.05)" stroke="var(--primary)" />
+                            <text x="290" y="55" fill="white" font-size="10" text-anchor="middle">Raw MLM Head</text>
+                            
+                            <!-- Branch POS -->
+                            <rect x="230" y="150" width="120" height="40" rx="6" fill="rgba(16, 185, 129, 0.05)" stroke="var(--tertiary)" />
+                            <text x="290" y="175" fill="white" font-size="10" text-anchor="middle">POS Classifier</text>
+
+                            <!-- Vocab mask map -->
+                            <rect x="400" y="150" width="120" height="40" rx="6" fill="rgba(236, 72, 153, 0.05)" stroke="var(--secondary)" />
+                            <text x="460" y="175" fill="white" font-size="10" text-anchor="middle">Vocab Mask Map</text>
+
+                            <!-- Logits combination -->
+                            <circle cx="460" cy="50" r="18" fill="#1f2937" stroke="rgba(255,255,255,0.2)" />
+                            <text x="460" y="54" fill="white" font-size="16" text-anchor="middle">+</text>
+                            <text x="460" y="80" fill="var(--text-muted)" font-size="9" text-anchor="middle">Overlay Logits</text>
+
+                            <!-- Connections -->
+                            <path d="M 150 115 L 230 50" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <path d="M 150 115 L 230 170" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <path d="M 350 170 L 400 170" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <path d="M 460 150 L 460 68" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <path d="M 350 50 L 442 50" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                        </svg>
                     </div>
                 </div>
             </article>
 
-            <!-- Slide 6: Layered Mask Simulator -->
+            <!-- Slide 8: Layered Backpropagation -->
             <article class="slide-card">
                 <div class="slide-header">
-                    <span class="slide-category">Interactive Playground</span>
-                    <h2 class="slide-title">Interactive Logits Filtering Simulator</h2>
+                    <span class="slide-category">Gradients & Backprop</span>
+                    <h2 class="slide-title">LayeredPOSMLMBert Dual Gradients Flow</h2>
                     <p class="slide-desc">
-                        Simulate the forward pass of <code>LayeredPOSMLMBert</code> for the sentence: <em>"the [MASK] sat on the mat."</em>
-                        Select different masking modes below to see how they affect the model's vocabulary logits distribution.
+                        In the <strong>Soft Layered Masking</strong> mode, the vocab mask is computed dynamically as the dot-product of predicted POS probabilities and the allowed vocabulary matrix. This makes the mask fully differentiable! 
+                        Consequently, gradients from the MLM semantic loss propagate backwards through the log-combination overlay and directly into the POS Tagging Head, co-tuning both heads. Click below to watch the gradient flows.
                     </p>
                 </div>
 
-                <div class="visual-container">
-                    <div class="logits-playground">
-                        
-                        <!-- Left controls -->
-                        <div class="mode-toggle-group">
-                            <button class="mode-toggle-btn active" id="btn-raw" onclick="updateLogitsMode('raw')">Raw MLM Logits (Unmasked)</button>
-                            <button class="mode-toggle-btn" id="btn-gold" onclick="updateLogitsMode('gold')">Gold Masking (NN only)</button>
-                            <button class="mode-toggle-btn" id="btn-hard" onclick="updateLogitsMode('hard')">Hard Masking (NN predicted)</button>
-                            <button class="mode-toggle-btn" id="btn-soft" onclick="updateLogitsMode('soft')">Soft Masking (Prob Mixture)</button>
-                        </div>
+                <div class="lecture-content">
+                    <div style="text-align: center; margin-bottom: 1rem;">
+                        <button class="btn btn-primary" style="margin: 0 auto;" onclick="triggerBackpropAnimation('layered')">Trigger Backpropagation</button>
+                    </div>
 
-                        <!-- Right Chart -->
-                        <div class="logits-chart">
+                    <div class="visual-container">
+                        <svg class="backprop-svg" viewBox="0 0 700 320">
+                            <!-- Nodes -->
+                            <rect class="backprop-node" x="40" y="130" width="100" height="60" rx="8" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.1)" />
+                            <text x="90" y="165" fill="white" font-size="11" text-anchor="middle">Base BERT</text>
+
+                            <rect class="backprop-node" x="220" y="30" width="110" height="50" rx="8" fill="rgba(99, 102, 241, 0.05)" stroke="var(--primary)" />
+                            <text x="275" y="60" fill="white" font-size="10" text-anchor="middle">MLM Head</text>
+
+                            <rect class="backprop-node" x="220" y="240" width="110" height="50" rx="8" fill="rgba(16, 185, 129, 0.05)" stroke="var(--tertiary)" />
+                            <text x="275" y="270" fill="white" font-size="10" text-anchor="middle">POS Classifier</text>
+
+                            <!-- Logits Combiner -->
+                            <circle cx="430" cy="55" r="18" fill="#1f2937" stroke="rgba(255,255,255,0.2)" />
+                            <text x="430" y="59" fill="white" font-size="15" text-anchor="middle">+</text>
+                            <text x="430" y="85" fill="var(--text-muted)" font-size="8" text-anchor="middle">Logits Combiner</text>
+
+                            <!-- Losses -->
+                            <circle cx="580" cy="55" r="22" fill="#311b92" stroke="#6366f1" />
+                            <text x="580" y="59" fill="white" font-size="10" text-anchor="middle">L_MLM</text>
+
+                            <circle cx="580" cy="265" r="22" fill="#1b5e20" stroke="#10b981" />
+                            <text x="580" y="269" fill="white" font-size="10" text-anchor="middle">L_POS</text>
+
+                            <!-- Connections -->
+                            <line x1="140" y1="160" x2="220" y2="55" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <line x1="140" y1="160" x2="220" y2="265" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <line x1="330" y1="55" x2="412" y2="55" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <line x1="448" y1="55" x2="558" y2="55" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
+                            <line x1="330" y1="265" x2="558" y2="265" stroke="rgba(255,255,255,0.15)" stroke-width="1.5" />
                             
-                            <!-- Row 1: cat -->
-                            <div class="logit-row">
-                                <div class="logit-word">cat (Noun)</div>
-                                <div class="logit-bar-outer">
-                                    <div class="logit-bar-inner" id="bar-cat"></div>
-                                </div>
-                                <div class="logit-val" id="val-cat">0%</div>
-                            </div>
+                            <!-- Soft Gradients connection path: from Combiner to POS Classifier -->
+                            <path d="M 430 73 L 430 200 L 275 200 L 275 240" fill="none" stroke="rgba(236, 72, 153, 0.4)" stroke-width="2" stroke-dasharray="4" class="gradient-glow" />
+                            <text x="350" y="193" fill="var(--secondary)" font-size="9" text-anchor="middle">MLM Gradient Route (Soft)</text>
 
-                            <!-- Row 2: dog -->
-                            <div class="logit-row">
-                                <div class="logit-word">dog (Noun)</div>
-                                <div class="logit-bar-outer">
-                                    <div class="logit-bar-inner" id="bar-dog"></div>
-                                </div>
-                                <div class="logit-val" id="val-dog">0%</div>
-                            </div>
+                            <!-- Animated Particles -->
+                            <circle class="grad-particle" id="pl-mlm-0" cx="558" cy="55" />
+                            <circle class="grad-particle" id="pl-mlm-1" cx="412" cy="55" />
+                            <circle class="grad-particle" id="pl-mlm-2" cx="220" cy="55" />
+                            
+                            <!-- MLM flowing to POS head during soft backprop -->
+                            <path id="pl-path-soft" d="M 430 73 L 430 200 L 275 200 L 275 240" fill="none" stroke="transparent" />
+                            <circle class="grad-particle" id="pl-mlm-soft-node" cx="430" cy="73" />
 
-                            <!-- Row 3: sat -->
-                            <div class="logit-row">
-                                <div class="logit-word">sat (Verb)</div>
-                                <div class="logit-bar-outer">
-                                    <div class="logit-bar-inner" id="bar-sat"></div>
-                                </div>
-                                <div class="logit-val" id="val-sat">0%</div>
-                            </div>
+                            <circle class="grad-particle" id="pl-pos-0" cx="558" cy="265" />
+                            <circle class="grad-particle" id="pl-pos-1" cx="220" cy="265" />
+                        </svg>
+                    </div>
+                </div>
+            </article>
 
-                            <!-- Row 4: happy -->
-                            <div class="logit-row">
-                                <div class="logit-word">happy (Adj)</div>
-                                <div class="logit-bar-outer">
-                                    <div class="logit-bar-inner" id="bar-happy"></div>
-                                </div>
-                                <div class="logit-val" id="val-happy">0%</div>
+            <!-- Slide 9: Downstream Evaluation -->
+            <article class="slide-card">
+                <div class="slide-header">
+                    <span class="slide-category">Evaluation & Benchmarks</span>
+                    <h2 class="slide-title">Linguistic, Semantic & Generative Verification</h2>
+                    <p class="slide-desc">
+                        Our evaluation framework spans multiple tasks to evaluate language capacity from multiple perspectives: WikiText-2 (language fluency), BLiMP (zero-shot grammar understanding), and downstream GLUE tasks (fine-tuning for sentiment classification and paraphrase similarity).
+                    </p>
+                </div>
+
+                <div class="lecture-content">
+                    <div class="score-board">
+                        <div class="score-card">
+                            <h4 style="margin-bottom: 0.75rem; font-family: 'Outfit', sans-serif;">Syntactic (BLiMP Accuracy)</h4>
+                            <div class="score-row">
+                                <span>BASEBERT</span>
+                                <span class="score-val highlight-indigo">69.1%</span>
+                            </div>
+                            <div class="score-row">
+                                <span>MLMPOSBert</span>
+                                <span class="score-val highlight-emerald">71.8%</span>
+                            </div>
+                            <div class="score-row">
+                                <span>LAYERED_POS_MLM_SOFT</span>
+                                <span class="score-val highlight-emerald">72.4%</span>
                             </div>
                         </div>
 
+                        <div class="score-card">
+                            <h4 style="margin-bottom: 0.75rem; font-family: 'Outfit', sans-serif;">Semantic (GLUE Average)</h4>
+                            <div class="score-row">
+                                <span>BASEBERT</span>
+                                <span class="score-val highlight-indigo">73.5%</span>
+                            </div>
+                            <div class="score-row">
+                                <span>MLMPOSBert</span>
+                                <span class="score-val highlight-emerald">74.9%</span>
+                            </div>
+                            <div class="score-row">
+                                <span>LAYERED_POS_MLM_SOFT</span>
+                                <span class="score-val highlight-emerald">75.1%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="info-card" style="margin-top: 1.5rem;">
+                        <h4 class="info-card-title">📊 Rationale of the Evaluation Suite</h4>
+                        <p class="info-card-text">
+                            WikiText-2 Perplexity verifies general language probability mapping, BLiMP isolates linguistic syntax processing (grammatical acceptability), and GLUE checks if our pretraining models generalize to downstream classification semantics.
+                        </p>
+                    </div>
+                </div>
+            </article>
+
+            <!-- Slide 10: Recap & Takeaways -->
+            <article class="slide-card">
+                <div class="slide-header">
+                    <span class="slide-category">Key Takeaways</span>
+                    <h2 class="slide-title">Pretraining Architecture Review</h2>
+                    <p class="slide-desc">
+                        Our experiments show that combining multi-task pretraining with structural syntax alignment regularizes representation learning, leading to faster convergence and stronger performance on syntactic and semantic evaluations within strict low-resource boundaries.
+                    </p>
+                </div>
+
+                <div class="lecture-content">
+                    <div class="info-grid">
+                        <div class="info-card">
+                            <h4 class="info-card-title">✅ Subword Pooling</h4>
+                            <p class="info-card-text">
+                                Dynamically averaging subwords into word vectors allows the base encoder to benefit from both fine-grained subword semantics and word-level syntax constraints.
+                            </p>
+                        </div>
+                        <div class="info-card">
+                            <h4 class="info-card-title">✅ Layered Vocab Filters</h4>
+                            <p class="info-card-text">
+                                Overlaying POS prediction filters onto logits reduces prediction entropy, enabling robust vocabulary convergence even under strict small-data budgets.
+                            </p>
+                        </div>
+                    </div>
+                    <div style="text-align: center; margin-top: 2rem;">
+                        <button class="btn btn-primary" style="margin: 0 auto;" onclick="gotoSlide(0)">Restart Lecture</button>
                     </div>
                 </div>
             </article>
@@ -833,7 +1251,7 @@
             <!-- Bottom Deck Controls -->
             <div class="controls">
                 <button class="btn" id="prev-btn" onclick="prevSlide()">Previous Step</button>
-                <div class="progress-indicator" id="progress-text">Step 1 of 6</div>
+                <div class="progress-indicator" id="progress-text">Step 1 of 10</div>
                 <button class="btn btn-primary" id="next-btn" onclick="nextSlide()">Next Step</button>
             </div>
 
@@ -841,7 +1259,7 @@
     </main>
 
     <script>
-        // Slide controller
+        // Lecture Slide Navigation controller
         let currentSlide = 0;
         const slides = document.querySelectorAll('.slide-card');
         const navItems = document.querySelectorAll('.nav-item');
@@ -856,13 +1274,22 @@
             navItems[currentSlide].classList.add('active');
             progressText.innerText = `Step ${currentSlide + 1} of ${slides.length}`;
             
-            // Trigger specific animations on slide load
+            // Slide transition triggers
             if (currentSlide === 1) {
-                // Trigger subword vectors init
-                document.querySelector('.token-card.active').click();
-            } else if (currentSlide === 5) {
-                // Trigger simulator logits init
-                updateLogitsMode('raw');
+                // Reset masking cards selection
+                document.getElementById('mask-card-80').click();
+            } else if (currentSlide === 2) {
+                // Reset attention simulation
+                clickAttToken(2);
+            } else if (currentSlide === 3) {
+                // Reset matrix pooling hover values
+                matrixHover(0);
+            } else if (currentSlide === 4) {
+                // Reset loss weight sliders
+                updateLossesS();
+            } else if (currentSlide === 7) {
+                // Reset logits simulator
+                updatePlaygroundMode('raw');
             }
         }
 
@@ -885,90 +1312,212 @@
             updateDeck();
         }
 
-        // Slide 2: Interactive Token Selection
-        function selectToken(element, w1, w2, w3) {
-            // Remove active from all cards
-            document.querySelectorAll('.token-card').forEach(card => card.classList.remove('active'));
-            element.classList.add('active');
-
-            // Update vectors
-            document.getElementById('bar1').style.width = (w1 * 100) + '%';
-            document.getElementById('bar2').style.width = (w2 * 100) + '%';
-            document.getElementById('bar3').style.width = (w3 * 100) + '%';
-
-            // Update parent word indicator
-            document.getElementById('parent-word-info').innerText = element.getAttribute('data-id');
+        // Slide 2: MLM 80/10/10 Masking card selector
+        function selectMaskingInfo(pct, title, desc) {
+            document.querySelectorAll('.masking-card').forEach(card => card.classList.remove('active'));
+            if (pct === 80) {
+                document.getElementById('mask-card-80').classList.add('active');
+            } else if (pct === 10 && title.includes('Random')) {
+                document.getElementById('mask-card-10-rand').classList.add('active');
+            } else {
+                document.getElementById('mask-card-10-keep').classList.add('active');
+            }
+            document.getElementById('mask-info-title').innerText = `${pct}% ${title}`;
+            document.getElementById('mask-info-desc').innerText = desc;
         }
 
-        // Slide 3: Interactive Pooling Matrix
-        function highlightRow(rowIdx) {
-            const cells = document.querySelectorAll('.matrix-cell');
-            cells.forEach(cell => cell.classList.remove('highlight'));
+        // Slide 3: Interactive Attention Logic
+        let currentAttentionMode = 'bidirectional';
+        function toggleAttentionMode(mode) {
+            currentAttentionMode = mode;
+            document.getElementById('att-bidirectional-btn').className = (mode === 'bidirectional') ? 'btn btn-primary' : 'btn';
+            document.getElementById('att-causal-btn').className = (mode === 'causal') ? 'btn btn-primary' : 'btn';
             
-            // A matrix table has 3 rows x 6 columns
-            const startCell = rowIdx * 6;
-            for (let i = 0; i < 5; i++) {
-                cells[startCell + i].classList.add('highlight');
-            }
-
-            // Update descriptive math label text
-            const mathLabel = document.getElementById('pooling-math-text');
-            if (rowIdx === 0) {
-                mathLabel.innerHTML = "<strong>Pooling Row 0:</strong><br/>Word_0 State (the) = <br/>1.0 * H_seq[0] (the)";
-            } else if (rowIdx === 1) {
-                mathLabel.innerHTML = "<strong>Pooling Row 1:</strong><br/>Word_1 State (cats) = <br/>0.5 * H_seq[1] (cat) + <br/>0.5 * H_seq[2] (##s)";
-            } else if (rowIdx === 2) {
-                mathLabel.innerHTML = "<strong>Pooling Row 2:</strong><br/>Word_2 State (jumped) = <br/>0.5 * H_seq[3] (jump) + <br/>0.5 * H_seq[4] (##ed)";
+            // Re-trigger visual highlight based on selected active token
+            const activeToken = document.querySelector('.attention-token.selected');
+            if (activeToken) {
+                const idx = parseInt(activeToken.id.split('-t')[1]);
+                clickAttToken(idx);
             }
         }
 
-        // Slide 4: Multi-Task Losses combination calculator
-        function updateLosses() {
-            const inputs = document.querySelectorAll('input[type="range"]');
+        function clickAttToken(idx) {
+            document.querySelectorAll('.attention-token').forEach(tok => {
+                tok.className = 'attention-token';
+            });
+            
+            document.getElementById(`att-t${idx}`).className = 'attention-token selected';
+            const expPanel = document.getElementById('att-explanation');
+
+            if (currentAttentionMode === 'bidirectional') {
+                for (let i = 0; i < 5; i++) {
+                    if (i !== idx) {
+                        document.getElementById(`att-t${i}`).className = 'attention-token attending';
+                    }
+                }
+                expPanel.innerHTML = `<strong>BERT Bidirectional context:</strong> The active token <code>"${document.getElementById(`att-t${idx}`).innerText}"</code> queries all sequence tokens simultaneously (left and right). This allows the representations to capture full bidirectional dependencies.`;
+            } else {
+                for (let i = 0; i < 5; i++) {
+                    if (i < idx) {
+                        document.getElementById(`att-t${i}`).className = 'attention-token attending';
+                    } else if (i > idx) {
+                        document.getElementById(`att-t${i}`).className = 'attention-token causal-blocked';
+                    }
+                }
+                expPanel.innerHTML = `<strong>GPT Causal context:</strong> The active token <code>"${document.getElementById(`att-t${idx}`).innerText}"</code> is mathematically prevented from attending to tokens on its right (masked out with negative infinity coefficients in self-attention).`;
+            }
+        }
+
+        // Slide 4: Subword Average Pooling Matrix math tracker
+        function matrixHover(rowIdx) {
+            const cells = document.querySelectorAll('.matrix-cell-node');
+            cells.forEach(c => c.classList.remove('highlight'));
+            
+            // Trace the row and highlight 5 cells
+            const start = rowIdx * 5;
+            for (let i = 0; i < 5; i++) {
+                cells[start + i].classList.add('highlight');
+            }
+
+            const mathText = document.getElementById('pooling-math-text');
+            if (rowIdx === 0) {
+                mathText.innerHTML = "<strong>Pooling Row 0:</strong><br/>Word_0 State (the) = 1.0 * H[0] (the)";
+            } else if (rowIdx === 1) {
+                mathText.innerHTML = "<strong>Pooling Row 1:</strong><br/>Word_1 State (cats) = 0.5 * H[1] (cat) + 0.5 * H[2] (##s)";
+            } else if (rowIdx === 2) {
+                mathText.innerHTML = "<strong>Pooling Row 2:</strong><br/>Word_2 State (jumped) = 0.5 * H[3] (jump) + 0.5 * H[4] (##ed)";
+            }
+        }
+
+        // Slide 5: Loss weights calculator
+        function updateLossesS() {
+            const inputs = document.querySelectorAll('.loss-bars-layout input[type="range"]');
             const mlm = parseFloat(inputs[0].value) / 100;
             const pos = parseFloat(inputs[1].value) / 100;
             const alpha = parseFloat(inputs[2].value) / 100;
 
-            document.getElementById('val-mlm').innerText = `Loss: ${mlm.toFixed(2)}`;
-            document.getElementById('val-pos').innerText = `Loss: ${pos.toFixed(2)}`;
-            document.getElementById('val-alpha').innerText = `Weight: ${alpha.toFixed(2)}`;
+            document.getElementById('val-mlm-s').innerText = `Loss: ${mlm.toFixed(2)}`;
+            document.getElementById('val-pos-s').innerText = `Loss: ${pos.toFixed(2)}`;
+            document.getElementById('val-alpha-s').innerText = `Weight: ${alpha.toFixed(2)}`;
 
             const total = mlm + (alpha * pos);
-            document.getElementById('val-total').innerText = total.toFixed(2);
+            document.getElementById('val-total-s').innerText = total.toFixed(2);
         }
 
-        // Slide 6: Logits Filter Playground Simulator
-        function updateLogitsMode(mode) {
-            // Remove active style from toggles
-            document.querySelectorAll('.mode-toggle-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById(`btn-${mode}`).classList.add('active');
+        // Slide 6 & 8: Backpropagation Animations
+        function triggerBackpropAnimation(type) {
+            if (type === 'multitask') {
+                animateParticle('p-mlm-0', 580, 55, 320, 55, () => {
+                    animateParticle('p-mlm-1', 220, 55, 140, 160);
+                });
 
-            const barCat = document.getElementById('bar-cat');
-            const barDog = document.getElementById('bar-dog');
-            const barSat = document.getElementById('bar-sat');
-            const barHappy = document.getElementById('bar-happy');
+                setTimeout(() => {
+                    animateParticle('p-nsp-0', 580, 160, 320, 160, () => {
+                        animateParticle('p-nsp-1', 220, 160, 140, 160);
+                    });
+                }, 300);
 
-            const valCat = document.getElementById('val-cat');
-            const valDog = document.getElementById('val-dog');
-            const valSat = document.getElementById('val-sat');
-            const valHappy = document.getElementById('val-happy');
+                setTimeout(() => {
+                    animateParticle('p-pos-0', 580, 265, 480, 265, () => {
+                        animateParticle('p-pos-1', 380, 265, 320, 265, () => {
+                            animateParticle('p-pos-2', 220, 265, 140, 160);
+                        });
+                    });
+                }, 600);
 
-            if (mode === 'raw') {
-                // Equal chance or standard noise
-                setProbabilities(35, 25, 30, 10);
-            } else if (mode === 'gold') {
-                // Gold constraint: Nouns only, sat/happy are fully 0%
-                setProbabilities(60, 40, 0, 0);
-            } else if (mode === 'hard') {
-                // Predicts NN, masks other categories
-                setProbabilities(58, 42, 0, 0);
-            } else if (mode === 'soft') {
-                // Prob mixture of tags (e.g. 80% Noun, 20% Adjective)
-                setProbabilities(50, 36, 0, 14);
+            } else if (type === 'layered') {
+                // MLM loss backpropagates through logits combiner
+                animateParticle('pl-mlm-0', 580, 55, 448, 55, () => {
+                    // Split 1: flows to MLM head
+                    animateParticle('pl-mlm-1', 412, 55, 330, 55, () => {
+                        animateParticle('pl-mlm-2', 220, 55, 140, 160);
+                    });
+                    
+                    // Split 2: flows back to POS Classifier head (differentiable Soft masking pathway!)
+                    animateSoftPathParticle();
+                });
+
+                // Standard POS tagging loss backpropagation
+                setTimeout(() => {
+                    animateParticle('pl-pos-0', 580, 265, 330, 265, () => {
+                        animateParticle('pl-pos-1', 220, 265, 140, 160);
+                    });
+                }, 500);
             }
         }
 
-        function setProbabilities(p1, p2, p3, p4) {
+        function animateParticle(id, x1, y1, x2, y2, callback) {
+            const p = document.getElementById(id);
+            if (!p) return;
+            
+            p.setAttribute('cx', x1);
+            p.setAttribute('cy', y1);
+            p.style.opacity = '1';
+
+            let progress = 0;
+            const speed = 0.04; // interpolation speed
+            
+            function step() {
+                progress += speed;
+                if (progress >= 1) {
+                    p.setAttribute('cx', x2);
+                    p.setAttribute('cy', y2);
+                    p.style.opacity = '0';
+                    if (callback) callback();
+                } else {
+                    const cx = x1 + (x2 - x1) * progress;
+                    const cy = y1 + (y2 - y1) * progress;
+                    p.setAttribute('cx', cx);
+                    p.setAttribute('cy', cy);
+                    requestAnimationFrame(step);
+                }
+            }
+            requestAnimationFrame(step);
+        }
+
+        function animateSoftPathParticle() {
+            const p = document.getElementById('pl-mlm-soft-node');
+            const path = document.getElementById('pl-path-soft');
+            if (!p || !path) return;
+
+            p.style.opacity = '1';
+            let progress = 0;
+            const pathLength = path.getTotalLength();
+            const speed = 3.5; // pixel step speed
+
+            function step() {
+                progress += speed;
+                if (progress >= pathLength) {
+                    p.style.opacity = '0';
+                    // Continue from POS classifier back to base encoder
+                    animateParticle('pl-pos-1', 220, 265, 140, 160);
+                } else {
+                    const point = path.getPointAtLength(progress);
+                    p.setAttribute('cx', point.x);
+                    p.setAttribute('cy', point.y);
+                    requestAnimationFrame(step);
+                }
+            }
+            requestAnimationFrame(step);
+        }
+
+        // Slide 7: Logits simulation
+        function updatePlaygroundMode(mode) {
+            document.querySelectorAll('.mode-toggle-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById(`btn-${mode}`).classList.add('active');
+
+            if (mode === 'raw') {
+                setProbs(32, 28, 26, 14);
+            } else if (mode === 'gold') {
+                setProbs(55, 45, 0, 0);
+            } else if (mode === 'hard') {
+                setProbs(53, 47, 0, 0);
+            } else if (mode === 'soft') {
+                setProbs(46, 38, 0, 16);
+            }
+        }
+
+        function setProbs(p1, p2, p3, p4) {
             document.getElementById('bar-cat').style.width = p1 + '%';
             document.getElementById('bar-dog').style.width = p2 + '%';
             document.getElementById('bar-sat').style.width = p3 + '%';
